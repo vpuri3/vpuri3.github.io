@@ -1,0 +1,8 @@
+__site/
+.DS_Store
+node_modules/
+package-lock.json
+.gitlab-ci.yml
+
+.*.swp
+Manifest.toml

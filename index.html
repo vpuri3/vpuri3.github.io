@@ -1,1 +1,144 @@
-<!doctype html> <html lang=en > <meta charset=UTF-8 > <meta name=viewport  content="width=device-width, initial-scale=1"> <link rel=preconnect  href="https://fonts.googleapis.com"> <link rel=preconnect  href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel=stylesheet > <link rel=stylesheet  href="/css/franklin.css"> <style> :root { --bg: #f5f7fb; --surface: rgba(255, 255, 255, 0.9); --surface-2: #ffffff; --text: #0f172a; --muted: #475569; --line: #dbe3f0; --primary: #0f4c81; --accent: #2d7cb9; --shadow: 0 18px 40px rgba(15, 23, 42, 0.08); } html { font-family: "Source Serif 4", Georgia, serif; font-size: 18px; color: var(--text); background: radial-gradient(1100px 600px at 0% 0%, #e9f0ff 0%, var(--bg) 45%), radial-gradient(1000px 500px at 100% 0%, #f6ede1 0%, var(--bg) 45%), var(--bg); } body { color: var(--text); background: transparent; } .sidebar { background: linear-gradient(165deg, #0b2b47 0%, #143d63 55%, #225884 100%); box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.06); } .sidebar-about h1 a, .sidebar-about .lead, .sidebar-nav-item { font-family: "Space Grotesk", sans-serif; letter-spacing: 0.01em; } .sidebar-about h1 a { font-size: 1.6rem; font-weight: 700; } .sidebar-about .lead { color: rgba(255, 255, 255, 0.82); font-size: 0.95rem; } .sidebar-nav-item { color: rgba(255, 255, 255, 0.82); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; margin: 0.45rem 0; padding: 0.5rem 0.75rem; transition: transform 0.12s ease, background-color 0.12s ease, color 0.12s ease; } .sidebar-nav-item:hover, .sidebar-nav-item.active { text-decoration: none; color: #fff; background: rgba(255, 255, 255, 0.13); transform: translateY(-1px); } .content.container { width: min(980px, 94vw); margin: 2.2rem auto; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(6px); } .franklin-content { position: relative; width: 100%; padding: 2.6rem 3rem 2.5rem; line-height: 1.58; } .franklin-content h1, .franklin-content h2, .franklin-content h3, .franklin-content h4 { font-family: "Space Grotesk", sans-serif; color: var(--text); letter-spacing: -0.01em; } .franklin-content h1 { font-size: clamp(1.8rem, 1.5rem + 1vw, 2.4rem); margin-top: 0.2rem; margin-bottom: 0.65rem; border-bottom: 0; padding-bottom: 0; } .franklin-content h2 { margin-top: 2rem; padding-top: 0.3rem; border-bottom: 1px solid var(--line); padding-bottom: 0.45rem; font-size: 1.35rem; } .franklin-content h3 { margin-top: 1.4rem; margin-bottom: 0.3rem; font-size: 1.08rem; } .franklin-content p, .franklin-content li { color: var(--muted); } .franklin-content a { color: var(--primary); text-decoration-color: rgba(15, 76, 129, 0.28); text-underline-offset: 0.18em; } .franklin-content a:hover { color: var(--accent); text-decoration-thickness: 2px; } .franklin-content img { width: min(100%, 900px); margin: 1rem auto 1.2rem; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 26px rgba(15, 23, 42, 0.08); padding-left: 0; } .franklin-content ul { padding-left: 1.2rem; } .franklin-content li { margin: 0.35rem 0; } .sidebar p { color: rgba(255, 255, 255, 0.6); } @media (max-width: 980px) { .content.container { width: 100%; margin: 0; border-radius: 0; border-left: 0; border-right: 0; } } @media (max-width: 768px) { html { font-size: 17px; } .franklin-content { padding: 1.35rem 1.15rem 1.4rem; line-height: 1.52; } } </style> <link rel=icon  href="/assets/favicon.png"> <title>Vedant Puri</title> <div class=sidebar > <div class="container sidebar-sticky"> <div class=sidebar-about > <h1><a href="/">VP</a></h1> <p class=lead >Vedant Puri</p> </div> <nav class=sidebar-nav > <a class="sidebar-nav-item active" href="/">Home</a> <a class="sidebar-nav-item " href="/thoughts/">Thoughts</a> <a class="sidebar-nav-item " href="/work/">Work</a> </nav> <p>&copy; Vedant Puri.</p> </div> </div> <div class="content container"> <div class=franklin-content ><h1 id=vedant_puri ><a href="#vedant_puri" class=header-anchor >Vedant Puri</a></h1> <p>PhD Candidate, Carnegie Mellon University Efficient Transformer Architectures | Scientific Machine Learning</p> <p>I design scalable transformer architectures grounded in numerical methods. My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU. My background spans HPC, PDE solvers, and scientific computing.</p> <h2 id=featured_work ><a href="#featured_work" class=header-anchor >Featured Work</a></h2> <h3 id=flare_-_fast_low-rank_attention_routing_engine ><a href="#flare_-_fast_low-rank_attention_routing_engine" class=header-anchor >FLARE - Fast Low-Rank Attention Routing Engine</a></h3> <ul> <li><p>Unified low-rank reformulation of self-attention</p> <li><p>O&#40;NM&#41; memory scaling</p> <li><p>Scales to 1M tokens on a single GPU</p> <li><p>Benchmarked on PDE, NLP, and vision tasks</p> </ul> <p><a href="https://huggingface.co/papers/2508.12594">Paper</a> | <a href="https://github.com/vpuri3/FLARE.py">Code</a> | <a href="http://arxiv.org/abs/2508.12594">arXiv</a></p> <p><img src="https://raw.githubusercontent.com/vpuri3/FLARE.py/master/figs/time_memory_bwd.png" alt="" /></p> <h3 id=snf-rom ><a href="#snf-rom" class=header-anchor >SNF-ROM</a></h3> <p>SNF-ROM is a projection-based nonlinear reduced-order model using smooth neural fields for advection-dominated PDEs.</p> <p><a href="https://arxiv.org/abs/2405.14890">Journal of Computational Physics paper</a> | <a href="https://github.com/vpuri3/NeuralROMs.jl">Code</a></p> <h2 id=research_themes ><a href="#research_themes" class=header-anchor >Research Themes</a></h2> <ul> <li><p>Efficient attention and low-rank transformers</p> <li><p>Neural operators and PDE surrogates</p> <li><p>Numerical methods for ML architectures</p> <li><p>Scientific computing at scale</p> </ul> <h2 id=open_source ><a href="#open_source" class=header-anchor >Open Source</a></h2> <h3 id=flare ><a href="#flare" class=header-anchor >FLARE</a></h3> <p><a href="https://github.com/vpuri3/FLARE.py">FLARE.py</a>: Fast Low-rank Attention Routing Engine for scalable transformer attention.</p> <h3 id=julia_open_source_tools ><a href="#julia_open_source_tools" class=header-anchor >Julia Open Source Tools</a></h3> <ul> <li><p><a href="https://github.com/vpuri3/SciMLOperators.jl">SciMLOperators.jl</a>: operator abstractions for SciML and PDE workflows</p> <li><p><a href="https://github.com/vpuri3/LinearSolve.jl">LinearSolve.jl</a>: linear solver interface for scientific machine learning</p> </ul> <p>Additional Julia repos I have worked on include <a href="https://github.com/vpuri3/OrdinaryDiffEq.jl">OrdinaryDiffEq.jl</a>, <a href="https://github.com/vpuri3/NonlinearSolve.jl">NonlinearSolve.jl</a>, <a href="https://github.com/vpuri3/Optimization.jl">Optimization.jl</a>, <a href="https://github.com/vpuri3/SciMLBase.jl">SciMLBase.jl</a>, <a href="https://github.com/vpuri3/SciMLSensitivity.jl">SciMLSensitivity.jl</a>, <a href="https://github.com/vpuri3/DiffEqFlux.jl">DiffEqFlux.jl</a>, <a href="https://github.com/vpuri3/StochasticDiffEq.jl">StochasticDiffEq.jl</a>, and <a href="https://github.com/vpuri3/DiffEqBase.jl">DiffEqBase.jl</a>.</p> <h3 id=kolmogorovarnoldjl ><a href="#kolmogorovarnoldjl" class=header-anchor >KolmogorovArnold.jl</a></h3> <p><a href="https://github.com/vpuri3/KolmogorovArnold.jl">KolmogorovArnold.jl</a>: Julia implementation of Kolmogorov-Arnold Networks with custom gradients for faster training.</p> <h3 id=nektools ><a href="#nektools" class=header-anchor >NekTools</a></h3> <p><a href="https://github.com/vpuri3/NekTools">NekTools</a>: FORTRAN 77 utilities for turbulence statistics and post-processing in NEK5000.</p> <h2 id=blog ><a href="#blog" class=header-anchor >Blog</a></h2> <p>Long-form background, older project descriptions, and non-ML writing are archived here:</p> <ul> <li><p><a href="/work/">Work archive</a></p> <li><p><a href="/thoughts/">Thoughts archive</a></p> </ul> <p>Planned technical post:</p> <ul> <li><p>How to scale attention to 1M tokens on a single GPU</p> </ul> <div class=page-foot > <div class=copyright > &copy; Vedant Puri. Last modified: February 13, 2026. Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia programming language</a>. </div> </div> </div> </div>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vedant Puri | Efficient Transformer Architectures</title>
+  <meta name="description" content="Vedant Puri, PhD Candidate at CMU. Efficient transformer architectures, scientific machine learning, and numerical methods.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top">Vedant Puri</a>
+      <nav class="nav">
+        <a href="#featured">Featured</a>
+        <a href="#themes">Themes</a>
+        <a href="#open-source">Open Source</a>
+        <a href="#blog">Blog</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap reveal">
+      <p class="kicker">PhD Candidate, Carnegie Mellon University</p>
+      <h1>Efficient Transformer Architectures for Scientific Machine Learning</h1>
+      <p class="summary">I design scalable transformer architectures grounded in numerical methods.</p>
+      <p class="summary">My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU.</p>
+      <p class="summary">My background spans HPC, PDE solvers, and scientific computing.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="https://github.com/vpuri3/FLARE.py">View FLARE</a>
+        <a class="btn" href="https://github.com/vpuri3/vpCV/raw/master/vpCV.pdf">CV</a>
+      </div>
+    </section>
+
+    <section class="wrap reveal" id="featured">
+      <h2>Featured Work</h2>
+      <article class="card featured-card">
+        <div class="card-header">
+          <h3>FLARE - Fast Low-Rank Attention Routing Engine</h3>
+          <span class="tag">Flagship</span>
+        </div>
+        <ul>
+          <li>Unified low-rank reformulation of self-attention</li>
+          <li>O(NM) memory scaling</li>
+          <li>Scales to 1M tokens on a single GPU</li>
+          <li>Benchmarked on PDE, NLP, and vision tasks</li>
+        </ul>
+        <p class="links">
+          <a href="https://huggingface.co/papers/2508.12594">Paper</a>
+          <a href="https://github.com/vpuri3/FLARE.py">Code</a>
+          <a href="http://arxiv.org/abs/2508.12594">arXiv</a>
+        </p>
+        <img src="https://raw.githubusercontent.com/vpuri3/FLARE.py/master/figs/time_memory_bwd.png" alt="FLARE scaling plot">
+      </article>
+
+      <article class="card featured-card">
+        <h3>SNF-ROM</h3>
+        <p>SNF-ROM is a projection-based nonlinear reduced-order modeling framework with smooth neural fields for advection-dominated PDEs.</p>
+        <ul>
+          <li>Combines projection-based ROM with continuous neural field representations</li>
+          <li>Targets challenging transport-dominated PDE regimes</li>
+          <li>Implemented in Julia with experiment suites for 1D and 2D advection and Burgers systems</li>
+          <li>Includes reproducible pipelines for dataset generation, training, and model comparison</li>
+        </ul>
+        <p class="links">
+          <a href="https://vpuri3.github.io/NeuralROMs.jl/dev/">Project page</a>
+          <a href="https://arxiv.org/abs/2405.14890">JCP paper</a>
+          <a href="https://github.com/vpuri3/NeuralROMs.jl">Code</a>
+          <a href="https://slides.com/vedantpuri/snf-rom-wccm2024">Slides</a>
+          <a href="https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm">Talk</a>
+        </p>
+        <img src="assets/snfrom-online-stage.png" alt="SNF-ROM online stage architecture">
+      </article>
+    </section>
+
+    <section class="wrap reveal" id="themes">
+      <h2>Research Themes</h2>
+      <div class="grid two-up">
+        <div class="card"><p>Efficient attention and low-rank transformers</p></div>
+        <div class="card"><p>Neural operators and PDE surrogates</p></div>
+        <div class="card"><p>Numerical methods for ML architectures</p></div>
+        <div class="card"><p>Scientific computing at scale</p></div>
+      </div>
+    </section>
+
+    <section class="wrap reveal" id="open-source">
+      <h2>Open Source</h2>
+      <div class="stack">
+        <article class="card">
+          <h3>FLARE</h3>
+          <p><a href="https://github.com/vpuri3/FLARE.py">FLARE.py</a>: Fast Low-rank Attention Routing Engine for scalable transformer attention.</p>
+        </article>
+
+        <article class="card">
+          <h3>Julia Open Source Tools</h3>
+          <ul>
+            <li><a href="https://github.com/vpuri3/SciMLOperators.jl">SciMLOperators.jl</a>: operator abstractions for SciML and PDE workflows</li>
+            <li><a href="https://github.com/vpuri3/LinearSolve.jl">LinearSolve.jl</a>: linear solver interface for scientific machine learning</li>
+          </ul>
+          <p>Additional Julia repos: <a href="https://github.com/vpuri3/OrdinaryDiffEq.jl">OrdinaryDiffEq.jl</a>, <a href="https://github.com/vpuri3/NonlinearSolve.jl">NonlinearSolve.jl</a>, <a href="https://github.com/vpuri3/Optimization.jl">Optimization.jl</a>, <a href="https://github.com/vpuri3/SciMLBase.jl">SciMLBase.jl</a>, <a href="https://github.com/vpuri3/SciMLSensitivity.jl">SciMLSensitivity.jl</a>, <a href="https://github.com/vpuri3/DiffEqFlux.jl">DiffEqFlux.jl</a>, <a href="https://github.com/vpuri3/StochasticDiffEq.jl">StochasticDiffEq.jl</a>, <a href="https://github.com/vpuri3/DiffEqBase.jl">DiffEqBase.jl</a>.</p>
+        </article>
+
+        <article class="card">
+          <h3>KolmogorovArnold.jl</h3>
+          <p><a href="https://github.com/vpuri3/KolmogorovArnold.jl">KolmogorovArnold.jl</a>: Julia implementation of Kolmogorov-Arnold Networks with custom gradients for faster training.</p>
+        </article>
+
+        <article class="card">
+          <h3>NekTools</h3>
+          <p><a href="https://github.com/vpuri3/NekTools">NekTools</a>: FORTRAN 77 utilities for turbulence statistics and post-processing in NEK5000.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap reveal" id="blog">
+      <h2>Blog</h2>
+      <p>Long-form background, older project descriptions, and non-ML writing:</p>
+      <ul>
+        <li><a href="/work.html">Work archive</a></li>
+        <li><a href="/thoughts.html">Thoughts archive</a></li>
+      </ul>
+      <p>Planned technical post: <strong>How to scale attention to 1M tokens on a single GPU</strong>.</p>
+    </section>
+  </main>
+
+  <footer class="wrap footer">
+    <p>Vedant Puri</p>
+    <p><a href="https://github.com/vpuri3">GitHub</a> <span class="sep">|</span> <a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> <span class="sep">|</span> <a href="mailto:vedantpuri@cmu.edu">Email</a></p>
+  </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.classList.add("show");
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+  </script>
+</body>
+</html>
