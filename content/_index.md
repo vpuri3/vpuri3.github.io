@@ -31,7 +31,7 @@ title = "Home"
 
 [Paper](https://huggingface.co/papers/2508.12594) | [Code](https://github.com/vpuri3/FLARE.py) | [arXiv](http://arxiv.org/abs/2508.12594)
 
-![FLARE scaling plot](https://raw.githubusercontent.com/vpuri3/FLARE.py/master/figs/time_memory_bwd.png)
+![FLARE architecture overview](/assets/flare-overview.png)
 {{< /projectcard >}}
 
 {{< projectcard >}}
