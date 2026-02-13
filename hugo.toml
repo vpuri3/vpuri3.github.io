@@ -4,8 +4,8 @@ title = 'Vedant Puri'
 theme = 'PaperMod'
 
 [params]
-defaultTheme = 'light'
-disableThemeToggle = true
+defaultTheme = 'dark'
+disableThemeToggle = false
 ShowReadingTime = false
 ShowShareButtons = false
 ShowPostNavLinks = false
