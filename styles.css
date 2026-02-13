@@ -1,0 +1,264 @@
+:root {
+  --bg: #f4f4f3;
+  --bg-2: #ececeb;
+  --surface: #ffffff;
+  --surface-2: #fcfcfc;
+  --line: #d9d9d7;
+  --text: #1f2328;
+  --muted: #555d66;
+  --brand: #2f5e7a;
+  --brand-2: #59778f;
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Manrope", system-ui, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1100px 600px at 80% -5%, #e7e7e5 0%, transparent 55%),
+    radial-gradient(900px 500px at 5% -20%, #efefed 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  line-height: 1.6;
+}
+
+.wrap {
+  width: min(1040px, 92vw);
+  margin: 0 auto;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  backdrop-filter: blur(8px);
+  background: rgba(244, 244, 243, 0.82);
+  border-bottom: 1px solid rgba(31, 35, 40, 0.1);
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.nav a:hover {
+  color: var(--brand);
+}
+
+.hero {
+  padding: 6rem 0 2.5rem;
+}
+
+.kicker {
+  display: inline-block;
+  margin: 0 0 0.8rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 94, 122, 0.34);
+  color: var(--brand);
+  font-size: 0.82rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+h1 {
+  margin: 0;
+  max-width: 16ch;
+  font-size: clamp(2rem, 1.3rem + 2.2vw, 3.4rem);
+}
+
+h2 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+}
+
+h3 {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.1rem, 1rem + 0.35vw, 1.35rem);
+}
+
+.summary {
+  margin: 0.55rem 0;
+  max-width: 72ch;
+  color: var(--muted);
+}
+
+.cta-row {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid rgba(47, 94, 122, 0.45);
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.btn.primary {
+  background: linear-gradient(130deg, rgba(47, 94, 122, 0.14), rgba(89, 119, 143, 0.1));
+}
+
+section {
+  margin: 1.25rem auto;
+}
+
+.card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem 1rem;
+  box-shadow: var(--shadow);
+}
+
+.stack {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.grid.two-up {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tag {
+  font-size: 0.75rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--brand);
+  border: 1px solid rgba(47, 94, 122, 0.32);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+}
+
+ul {
+  padding-left: 1.1rem;
+}
+
+li {
+  margin: 0.3rem 0;
+  color: var(--muted);
+}
+
+p {
+  color: var(--muted);
+}
+
+a {
+  color: var(--brand);
+}
+
+a:hover {
+  color: var(--brand-2);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin: 0.55rem 0;
+}
+
+.featured-card img {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 0.65rem;
+  border: 1px solid rgba(47, 94, 122, 0.25);
+}
+
+.footer {
+  padding: 2.4rem 0 3rem;
+  text-align: center;
+}
+
+.footer p {
+  margin: 0.35rem 0;
+}
+
+.sep {
+  color: #8b949e;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.reveal.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 900px) {
+  .grid.two-up {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar-inner {
+    min-height: 58px;
+  }
+
+  .nav {
+    gap: 0.7rem;
+  }
+
+  .nav a {
+    font-size: 0.88rem;
+  }
+
+  .hero {
+    padding-top: 4rem;
+  }
+}
