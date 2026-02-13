@@ -39,6 +39,26 @@
   margin: 0 0 0.35rem;
 }
 
+.hero-top {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  margin-bottom: 0.7rem;
+}
+
+.hero-photo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border) 88%);
+  flex: 0 0 auto;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
 .hero-subtitle {
   color: var(--secondary);
   margin: 0 0 0.35rem;
@@ -91,6 +111,10 @@
   max-width: 640px;
 }
 
+#previous-work .project-card img {
+  max-width: 880px;
+}
+
 .sub-card {
   border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--border) 90%);
   border-radius: calc(var(--radius) - 3px);
@@ -102,4 +126,15 @@
 .sub-card > h2:first-child {
   margin-top: 0.1rem;
   font-size: 1.08rem;
+}
+
+@media (max-width: 640px) {
+  .hero-top {
+    align-items: flex-start;
+  }
+
+  .hero-photo {
+    width: 72px;
+    height: 72px;
+  }
 }

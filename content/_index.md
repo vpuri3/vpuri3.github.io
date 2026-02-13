@@ -3,9 +3,14 @@ title = "Home"
 +++
 
 <div class="hero-card">
-  <h1>Vedant Puri</h1>
-  <p class="hero-subtitle">PhD Candidate, Carnegie Mellon University</p>
-  <p class="hero-tagline">Efficient Transformer Architectures | Scientific Machine Learning</p>
+  <div class="hero-top">
+    <img class="hero-photo" src="/assets/profile-headshot.jpg" alt="Vedant Puri profile photo">
+    <div class="hero-copy">
+      <h1>Vedant Puri</h1>
+      <p class="hero-subtitle">PhD Candidate, Carnegie Mellon University</p>
+      <p class="hero-tagline">Efficient Transformer Architectures | Scientific Machine Learning</p>
+    </div>
+  </div>
   <p>
   I design scalable transformer architectures grounded in numerical methods.
   My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU.
@@ -41,6 +46,18 @@ SNF-ROM is a projection-based nonlinear reduced-order modeling framework with sm
 [Project page](https://vpuri3.github.io/NeuralROMs.jl/dev/) | [JCP paper](https://arxiv.org/abs/2405.14890) | [Code](https://github.com/vpuri3/NeuralROMs.jl) | [Slides](https://slides.com/vedantpuri/snf-rom-wccm2024) | [Talk](https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm)
 
 ![SNF-ROM online stage architecture](/assets/snfrom-online-stage.png)
+{{< /projectcard >}}
+{{< /card >}}
+
+{{< card id="previous-work" >}}
+## Previous Work: Computational fluid dynamics on HPC systems
+
+{{< projectcard >}}
+I previously worked on turbulence simulation and analysis workflows in high-performance computing settings, with emphasis on spectral element methods and large-scale post-processing.
+This background in numerical methods and PDE solvers informs how I design stable and efficient transformer architectures for scientific ML.
+
+![Velocity magnitude for flow past wall-mounted cube](/assets/wall-mounted-cube-velocity.jpg)
+*Velocity magnitude for flow past wall-mounted cube case at Reynolds Number 3900 with respect to cube height. Computation performed using spectral element code NEK5000 at Argonne Leadership Computing Facility.*
 {{< /projectcard >}}
 {{< /card >}}
 
