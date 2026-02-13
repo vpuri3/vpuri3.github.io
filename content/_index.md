@@ -12,9 +12,10 @@ title = "Home"
     </div>
   </div>
   <p>
-  I design scalable transformer architectures for scientific computing and beyond.
-  My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU.
-  My background spans high performance computing, partial differential equation solvers, and scientific machine learning.
+  I design transformer architectures with explicit attention to scaling and memory efficiency.
+  My recent work, FLARE, enables million-token regimes on a single GPU.
+  I implement new architectures directly in PyTorch and Triton.
+  My background spans high-performance computing, numerical analysis, and computational fluid dynamics.
   </p>
   <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=2N-Q4YkAAAAJ">Google Scholar</a></p>
 </div>
