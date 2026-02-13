@@ -12,12 +12,20 @@ title = "Home"
     </div>
   </div>
   <p>
-  I design scalable transformer architectures grounded in numerical methods.
+  I design scalable transformer architectures for scientific computing and beyond.
   My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU.
   My background spans high performance computing, partial differential equation solvers, and scientific machine learning.
   </p>
   <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=2N-Q4YkAAAAJ">Google Scholar</a></p>
 </div>
+
+{{< card id="research-interests" >}}
+## Research Interests
+
+- Efficient attention architectures
+- Numerical methods for ML and for PDEs
+- Scientific machine learning
+{{< /card >}}
 
 {{< card id="featured-work" >}}
 ## Featured Work
@@ -70,15 +78,6 @@ For the past decade, I have used a Canon DSLR as an excuse to walk around and ph
 
 [Open portfolio page](/photography/) | [Flickr](https://www.flickr.com/photos/128280868@N05/)
 {{< /projectcard >}}
-{{< /card >}}
-
-{{< card id="research-themes" >}}
-## Research Themes
-
-- Efficient attention and low-rank transformers
-- Neural operators and PDE surrogates
-- Numerical methods for ML architectures
-- Scientific computing at scale
 {{< /card >}}
 
 {{< card id="open-source" >}}
