@@ -1,0 +1,3 @@
+<div class="section-card" {{ with .Get "id" }}id="{{ . }}"{{ end }}>
+{{ .Inner | markdownify }}
+</div>
