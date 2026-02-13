@@ -1,0 +1,62 @@
+baseURL = 'https://vpuri3.github.io/'
+languageCode = 'en-us'
+title = 'Vedant Puri'
+theme = 'PaperMod'
+
+[params]
+defaultTheme = 'light'
+disableThemeToggle = true
+ShowReadingTime = false
+ShowShareButtons = false
+ShowPostNavLinks = false
+ShowBreadCrumbs = true
+ShowCodeCopyButtons = true
+ShowToc = false
+
+[markup.goldmark.renderer]
+unsafe = true
+
+[[params.socialIcons]]
+name = 'github'
+url = 'https://github.com/vpuri3'
+
+[[params.socialIcons]]
+name = 'linkedin'
+url = 'https://www.linkedin.com/in/vpuri3/'
+
+[[params.socialIcons]]
+name = 'email'
+url = 'mailto:vedantpuri@cmu.edu'
+
+[[menu.main]]
+identifier = 'featured'
+name = 'Featured'
+url = '/#featured-work'
+weight = 10
+
+[[menu.main]]
+identifier = 'research'
+name = 'Research'
+url = '/#research-themes'
+weight = 20
+
+[[menu.main]]
+identifier = 'open-source'
+name = 'Open Source'
+url = '/#open-source'
+weight = 30
+
+[[menu.main]]
+identifier = 'work'
+name = 'Work'
+url = '/work/'
+weight = 40
+
+[[menu.main]]
+identifier = 'thoughts'
+name = 'Thoughts'
+url = '/thoughts/'
+weight = 50
+
+[outputs]
+home = ['HTML', 'RSS', 'JSON']
