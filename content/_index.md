@@ -61,6 +61,17 @@ This background in numerical methods and PDE solvers informs how I design stable
 {{< /projectcard >}}
 {{< /card >}}
 
+{{< card id="photography" >}}
+## Not Work
+
+{{< projectcard >}}
+### Not So Up-to-Date Photography Portfolio
+For the past decade, I have used a Canon DSLR as an excuse to walk around and photograph people, geometry, and city texture.
+
+[Open portfolio page](/photography/) | [Flickr](https://www.flickr.com/photos/128280868@N05/)
+{{< /projectcard >}}
+{{< /card >}}
+
 {{< card id="research-themes" >}}
 ## Research Themes
 
