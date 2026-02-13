@@ -90,3 +90,16 @@
 #featured-work .project-card:last-of-type img {
   max-width: 640px;
 }
+
+.sub-card {
+  border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--border) 90%);
+  border-radius: calc(var(--radius) - 3px);
+  padding: 0.78rem 0.82rem;
+  margin: 0.75rem 0;
+  background: color-mix(in srgb, var(--entry) 92%, var(--theme) 8%);
+}
+
+.sub-card > h2:first-child {
+  margin-top: 0.1rem;
+  font-size: 1.08rem;
+}

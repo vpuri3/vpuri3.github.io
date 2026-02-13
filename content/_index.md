@@ -6,16 +6,19 @@ title = "Home"
   <h1>Vedant Puri</h1>
   <p class="hero-subtitle">PhD Candidate, Carnegie Mellon University</p>
   <p class="hero-tagline">Efficient Transformer Architectures | Scientific Machine Learning</p>
-  <p>I design scalable transformer architectures grounded in numerical methods.</p>
-  <p>My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU.</p>
-  <p>My background spans HPC, PDE solvers, and scientific computing.</p>
+  <p>
+  I design scalable transformer architectures grounded in numerical methods.
+  My recent work introduces FLARE, a unified low-rank attention mechanism that scales to million-token problems on a single GPU.
+  My background spans high performance computing, partial differential equation solvers, and scientific machine learning.
+  </p>
+  <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=2N-Q4YkAAAAJ">Google Scholar</a></p>
 </div>
 
 {{< card id="featured-work" >}}
 ## Featured Work
 
-<div class="project-card">
-<h3>FLARE - Fast Low-Rank Attention Routing Engine</h3>
+{{< projectcard >}}
+### FLARE - Fast Low-Rank Attention Routing Engine
 - Unified low-rank reformulation of self-attention
 - O(NM) memory scaling
 - Scales to 1M tokens on a single GPU
@@ -24,10 +27,10 @@ title = "Home"
 [Paper](https://huggingface.co/papers/2508.12594) | [Code](https://github.com/vpuri3/FLARE.py) | [arXiv](http://arxiv.org/abs/2508.12594)
 
 ![FLARE scaling plot](https://raw.githubusercontent.com/vpuri3/FLARE.py/master/figs/time_memory_bwd.png)
-</div>
+{{< /projectcard >}}
 
-<div class="project-card">
-<h3>SNF-ROM</h3>
+{{< projectcard >}}
+### SNF-ROM
 SNF-ROM is a projection-based nonlinear reduced-order modeling framework with smooth neural fields for advection-dominated PDEs.
 
 - Combines projection-based ROM with continuous neural field representations
@@ -38,7 +41,7 @@ SNF-ROM is a projection-based nonlinear reduced-order modeling framework with sm
 [Project page](https://vpuri3.github.io/NeuralROMs.jl/dev/) | [JCP paper](https://arxiv.org/abs/2405.14890) | [Code](https://github.com/vpuri3/NeuralROMs.jl) | [Slides](https://slides.com/vedantpuri/snf-rom-wccm2024) | [Talk](https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm)
 
 ![SNF-ROM online stage architecture](/assets/snfrom-online-stage.png)
-</div>
+{{< /projectcard >}}
 {{< /card >}}
 
 {{< card id="research-themes" >}}
@@ -53,26 +56,26 @@ SNF-ROM is a projection-based nonlinear reduced-order modeling framework with sm
 {{< card id="open-source" >}}
 ## Open Source
 
-<div class="project-card">
-<h3>FLARE</h3>
+{{< projectcard >}}
+### FLARE
 [FLARE.py](https://github.com/vpuri3/FLARE.py): Fast Low-rank Attention Routing Engine for scalable transformer attention.
-</div>
+{{< /projectcard >}}
 
-<div class="project-card">
-<h3>Julia Open Source Tools</h3>
+{{< projectcard >}}
+### Julia Open Source Tools
 - [SciMLOperators.jl](https://github.com/vpuri3/SciMLOperators.jl): operator abstractions for SciML and PDE workflows
 - [LinearSolve.jl](https://github.com/vpuri3/LinearSolve.jl): linear solver interface for scientific machine learning
 
 Additional Julia repos I have worked on include [OrdinaryDiffEq.jl](https://github.com/vpuri3/OrdinaryDiffEq.jl), [NonlinearSolve.jl](https://github.com/vpuri3/NonlinearSolve.jl), [Optimization.jl](https://github.com/vpuri3/Optimization.jl), [SciMLBase.jl](https://github.com/vpuri3/SciMLBase.jl), [SciMLSensitivity.jl](https://github.com/vpuri3/SciMLSensitivity.jl), [DiffEqFlux.jl](https://github.com/vpuri3/DiffEqFlux.jl), [StochasticDiffEq.jl](https://github.com/vpuri3/StochasticDiffEq.jl), and [DiffEqBase.jl](https://github.com/vpuri3/DiffEqBase.jl).
-</div>
+{{< /projectcard >}}
 
-<div class="project-card">
-<h3>KolmogorovArnold.jl</h3>
+{{< projectcard >}}
+### KolmogorovArnold.jl
 [KolmogorovArnold.jl](https://github.com/vpuri3/KolmogorovArnold.jl): Julia implementation of Kolmogorov-Arnold Networks with custom gradients for faster training.
-</div>
+{{< /projectcard >}}
 
-<div class="project-card">
-<h3>NekTools</h3>
+{{< projectcard >}}
+### NekTools
 [NekTools](https://github.com/vpuri3/NekTools): FORTRAN 77 utilities for turbulence statistics and post-processing in NEK5000.
-</div>
+{{< /projectcard >}}
 {{< /card >}}
