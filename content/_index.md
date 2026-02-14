@@ -17,7 +17,7 @@ title = "Home"
   I implement new architectures directly in PyTorch and Triton.
   My background spans high-performance computing, numerical analysis, and computational fluid dynamics.
   </p>
-  <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=2N-Q4YkAAAAJ">Google Scholar</a></p>
+  <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=2N-Q4YkAAAAJ">Google Scholar</a> | <a href="mailto:vedantpuri@cmu.edu"><code>vedantpuri@cmu.edu</code></a></p>
 </div>
 
 {{< card id="research-interests" >}}
@@ -32,27 +32,27 @@ title = "Home"
 ## Featured Work
 
 {{< projectcard >}}
-### FLARE - Fast Low-Rank Attention Routing Engine
-- Unified low-rank reformulation of self-attention
-- O(NM) memory scaling
-- Scales to 1M tokens on a single GPU
-- Benchmarked on PDE, NLP, and vision tasks
+### FLARE - Fast Low-rank Attention Routing Engine
+- Derived a flexible low-rank reformulation of self-attention via latent routing
+- Reduced quadratic complexity of self-attention to linear complexity while preserving global communication.
+- Demonstrated scaling to 1M tokens on a single H100 GPU, attaining over 200x speedup over vanilla self-attention.
+- Implemented attention modules in PyTorch and Triton with reproducible scaling experiments.
+- Evaluated across PDE surrogate modeling, NLP, and vision benchmarks.
 
-[Paper](https://huggingface.co/papers/2508.12594) | [Code](https://github.com/vpuri3/FLARE.py) | [arXiv](http://arxiv.org/abs/2508.12594)
+Ongoing work extends FLARE to decoder-only language modeling. This involves implementing Triton kernels for causal attention, including separate prefill and decode paths, and adapting low-rank attention mechanisms for autoregressive training and memory-constrained inference.
+
+[![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/FLARE.py) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/FLARE.py?style=social)](https://github.com/vpuri3/FLARE.py/stargazers) | [Huggingface Paper Page](https://huggingface.co/papers/2508.12594)
 
 ![FLARE architecture overview](/assets/flare-overview.png)
 {{< /projectcard >}}
 
 {{< projectcard >}}
-### SNF-ROM
-SNF-ROM is a projection-based nonlinear reduced-order modeling framework with smooth neural fields for advection-dominated PDEs.
+### Hybrid equation-based + data-driven PDE modeling framework
+- Introduced smooth neural fields as nonlinear spatial ansatz functions in equation-based reduced-order modeling.
+- Retained physics-based Galerkin time evolution while learning expressive low-dimensional representations.
+- Attained 200x speedup over full-order simulations in transport-dominated regimes.
 
-- Combines projection-based ROM with continuous neural field representations
-- Targets challenging transport-dominated PDE regimes
-- Implemented in Julia with experiment suites for 1D and 2D advection and Burgers systems
-- Includes reproducible pipelines for dataset generation, training, and model comparison
-
-[Project page](https://vpuri3.github.io/NeuralROMs.jl/dev/) | [JCP paper](https://arxiv.org/abs/2405.14890) | [Code](https://github.com/vpuri3/NeuralROMs.jl) | [Slides](https://slides.com/vedantpuri/snf-rom-wccm2024) | [Talk](https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm)
+[Project page](https://vpuri3.github.io/NeuralROMs.jl/dev/) | [Journal of Comp. Phys. paper](https://www.sciencedirect.com/science/article/pii/S0021999125002402) | [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/NeuralROMs.jl) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/NeuralROMs.jl?style=social)](https://github.com/vpuri3/NeuralROMs.jl/stargazers) | [Slides](https://slides.com/vedantpuri/snf-rom-wccm2024) | [Talk](https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm)
 
 ![SNF-ROM online stage architecture](/assets/snfrom-online-stage.png)
 {{< /projectcard >}}
@@ -85,25 +85,56 @@ For the past decade, I have used a Canon DSLR as an excuse to walk around and ph
 ## Open Source
 
 {{< projectcard >}}
-### FLARE
-[FLARE.py](https://github.com/vpuri3/FLARE.py): Fast Low-rank Attention Routing Engine for scalable transformer attention.
+### FLARE [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/FLARE.py) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/FLARE.py?style=social)](https://github.com/vpuri3/FLARE.py/stargazers)
+
+Fast Low-rank Attention Routing Engine for scalable transformer attention.
+
+{{< /projectcard >}}
+
+{{< projectcard >}}
+### mlutils.py [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/mlutils.py) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/mlutils.py?style=social)](https://github.com/vpuri3/mlutils.py/stargazers)
+
+Lightweight PyTorch project template and utility toolkit for ML experiments.
 {{< /projectcard >}}
 
 {{< projectcard >}}
 ### Julia Open Source Tools
-- [SciMLOperators.jl](https://github.com/vpuri3/SciMLOperators.jl): operator abstractions for SciML and PDE workflows
-- [LinearSolve.jl](https://github.com/vpuri3/LinearSolve.jl): linear solver interface for scientific machine learning
+#### [SciMLOperators.jl](https://github.com/SciML/SciMLOperators.jl) [![SciMLOperators.jl](https://img.shields.io/badge/GitHub-SciMLOperators.jl-181717?logo=github)](https://github.com/SciML/SciMLOperators.jl) [![SciMLOperators stars](https://img.shields.io/github/stars/SciML/SciMLOperators.jl?style=social)](https://github.com/SciML/SciMLOperators.jl/stargazers)
+Operator abstractions for SciML and PDE workflows
 
-Additional Julia repos I have worked on include [OrdinaryDiffEq.jl](https://github.com/vpuri3/OrdinaryDiffEq.jl), [NonlinearSolve.jl](https://github.com/vpuri3/NonlinearSolve.jl), [Optimization.jl](https://github.com/vpuri3/Optimization.jl), [SciMLBase.jl](https://github.com/vpuri3/SciMLBase.jl), [SciMLSensitivity.jl](https://github.com/vpuri3/SciMLSensitivity.jl), [DiffEqFlux.jl](https://github.com/vpuri3/DiffEqFlux.jl), [StochasticDiffEq.jl](https://github.com/vpuri3/StochasticDiffEq.jl), and [DiffEqBase.jl](https://github.com/vpuri3/DiffEqBase.jl).
+#### [LinearSolve.jl](https://github.com/SciML/LinearSolve.jl) [![LinearSolve.jl](https://img.shields.io/badge/GitHub-LinearSolve.jl-181717?logo=github)](https://github.com/SciML/LinearSolve.jl) [![LinearSolve stars](https://img.shields.io/github/stars/SciML/LinearSolve.jl?style=social)](https://github.com/SciML/LinearSolve.jl/stargazers)
+Linear solver interface for scientific machine learning
+
+
+Below is a nonexhaustive list of Julia projects that I have contributed to.
+- [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/OrdinaryDiffEq.jl) [![Stars](https://img.shields.io/github/stars/SciML/OrdinaryDiffEq.jl?style=social)](https://github.com/SciML/OrdinaryDiffEq.jl/stargazers)
+- [NonlinearSolve.jl](https://github.com/SciML/NonlinearSolve.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/NonlinearSolve.jl) [![Stars](https://img.shields.io/github/stars/SciML/NonlinearSolve.jl?style=social)](https://github.com/SciML/NonlinearSolve.jl/stargazers)
+- [Optimization.jl](https://github.com/SciML/Optimization.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/Optimization.jl) [![Stars](https://img.shields.io/github/stars/SciML/Optimization.jl?style=social)](https://github.com/SciML/Optimization.jl/stargazers)
+- [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/SciMLBase.jl) [![Stars](https://img.shields.io/github/stars/SciML/SciMLBase.jl?style=social)](https://github.com/SciML/SciMLBase.jl/stargazers)
+- [SciMLSensitivity.jl](https://github.com/SciML/SciMLSensitivity.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/SciMLSensitivity.jl) [![Stars](https://img.shields.io/github/stars/SciML/SciMLSensitivity.jl?style=social)](https://github.com/SciML/SciMLSensitivity.jl/stargazers)
+- [DiffEqFlux.jl](https://github.com/SciML/DiffEqFlux.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/DiffEqFlux.jl) [![Stars](https://img.shields.io/github/stars/SciML/DiffEqFlux.jl?style=social)](https://github.com/SciML/DiffEqFlux.jl/stargazers)
+- [StochasticDiffEq.jl](https://github.com/SciML/StochasticDiffEq.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/StochasticDiffEq.jl) [![Stars](https://img.shields.io/github/stars/SciML/StochasticDiffEq.jl?style=social)](https://github.com/SciML/StochasticDiffEq.jl/stargazers)
+- [DiffEqBase.jl](https://github.com/SciML/DiffEqBase.jl) [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/SciML/DiffEqBase.jl) [![Stars](https://img.shields.io/github/stars/SciML/DiffEqBase.jl?style=social)](https://github.com/SciML/DiffEqBase.jl/stargazers)
 {{< /projectcard >}}
 
 {{< projectcard >}}
-### KolmogorovArnold.jl
-[KolmogorovArnold.jl](https://github.com/vpuri3/KolmogorovArnold.jl): Julia implementation of Kolmogorov-Arnold Networks with custom gradients for faster training.
+### KolmogorovArnold.jl [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/KolmogorovArnold.jl) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/KolmogorovArnold.jl?style=social)](https://github.com/vpuri3/KolmogorovArnold.jl/stargazers)
+
+Julia implementation of Kolmogorov-Arnold Networks with custom gradients for faster training.
+
 {{< /projectcard >}}
 
 {{< projectcard >}}
-### NekTools
-[NekTools](https://github.com/vpuri3/NekTools): FORTRAN 77 utilities for turbulence statistics and post-processing in NEK5000.
+### FastDiffusion.py [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/FastDiffusion.py) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/FastDiffusion.py?style=social)](https://github.com/vpuri3/FastDiffusion.py/stargazers)
+
+Experiment with trigonometric noise schedule in context of few step diffusion.
+
+{{< /projectcard >}}
+
+{{< projectcard >}}
+### NekTools [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/NekTools) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/NekTools?style=social)](https://github.com/vpuri3/NekTools/stargazers)
+
+FORTRAN 77 utilities for turbulence statistics and post-processing in NEK5000.
+
 {{< /projectcard >}}
 {{< /card >}}

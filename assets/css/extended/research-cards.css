@@ -103,6 +103,18 @@
   border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--border) 90%);
 }
 
+/* Keep shields.io badges compact instead of full-width image styling */
+.project-card img[src*="img.shields.io"] {
+  width: auto;
+  max-width: none;
+  height: 20px;
+  margin: 0.15rem 0.25rem 0.1rem 0;
+  border: 0;
+  border-radius: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 #featured-work .project-card:first-of-type img {
   max-width: 700px;
 }

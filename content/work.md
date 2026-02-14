@@ -63,10 +63,14 @@ Started work on fully differentiable spectral element solver implemented in Juli
 ## Julia Computing, 2021
 I am working on deploying Physics Informed Neural Networks for Julia Computing's commercial products under Dr. Chris Rackauckas. I also wrote the linear solver interface for `DifferentialEquations.jl` ecosystem.
 
+{{< /projectcard >}}
+
+{{< /card >}}
+
+{{< card >}}
+
 # PhD @ Carnegie Mellon University, 2022-
 
 In January 2022, I will join Carneige Mellon University to continue working on numerical PDEs with the [Viswanathan Research Group](https://www.cmu.edu/me/venkatgroup/) in the Mechanical Engineering Department. Having worked with the group for about a year, the group's emplasis on pushing out open source packages and ties to commercial markets constrains and guides my research endeavors in a fruitful direction. 
-
-{{< /projectcard >}}
 
 {{< /card >}}
