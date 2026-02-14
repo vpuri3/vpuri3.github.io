@@ -67,10 +67,10 @@ I am working on deploying Physics Informed Neural Networks for Julia Computing's
 
 {{< /card >}}
 
-{{< card >}}
+<!-- {{< card >}}
 
 # PhD @ Carnegie Mellon University, 2022-
 
 In January 2022, I will join Carneige Mellon University to continue working on numerical PDEs with the [Viswanathan Research Group](https://www.cmu.edu/me/venkatgroup/) in the Mechanical Engineering Department. Having worked with the group for about a year, the group's emplasis on pushing out open source packages and ties to commercial markets constrains and guides my research endeavors in a fruitful direction. 
 
-{{< /card >}}
+{{< /card >}} -->

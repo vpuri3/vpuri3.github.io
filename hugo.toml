@@ -12,6 +12,14 @@ ShowPostNavLinks = false
 ShowBreadCrumbs = true
 ShowCodeCopyButtons = true
 ShowToc = false
+images = ['https://github.com/vpuri3.png']
+
+[params.assets]
+favicon = 'https://github.githubassets.com/favicons/favicon.png'
+favicon16x16 = 'https://github.githubassets.com/favicons/favicon.png'
+favicon32x32 = 'https://github.githubassets.com/favicons/favicon.png'
+apple_touch_icon = 'https://github.com/vpuri3.png'
+safari_pinned_tab = 'https://github.githubassets.com/favicons/favicon.svg'
 
 [markup.goldmark.renderer]
 unsafe = true
