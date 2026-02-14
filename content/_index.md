@@ -33,17 +33,29 @@ title = "Home"
 
 {{< projectcard >}}
 ### FLARE - Fast Low-rank Attention Routing Engine
-- Derived a flexible low-rank reformulation of self-attention via latent routing
-- Reduced quadratic complexity of self-attention to linear complexity while preserving global communication.
+- Derived a flexible low-rank reformulation of self-attention via latent routing.
+- Reduced quadratic complexity of global communication in self-attention to linear complexity.
 - Demonstrated scaling to 1M tokens on a single H100 GPU, attaining over 200x speedup over vanilla self-attention.
 - Implemented attention modules in PyTorch and Triton with reproducible scaling experiments.
 - Evaluated across PDE surrogate modeling, NLP, and vision benchmarks.
 
-Ongoing work extends FLARE to decoder-only language modeling. This involves implementing Triton kernels for causal attention, including separate prefill and decode paths, and adapting low-rank attention mechanisms for autoregressive training and memory-constrained inference.
-
-[![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/FLARE.py) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/FLARE.py?style=social)](https://github.com/vpuri3/FLARE.py/stargazers) | [Huggingface Paper Page](https://huggingface.co/papers/2508.12594)
+[![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/FLARE.py)
+[![GitHub stars](https://img.shields.io/github/stars/vpuri3/FLARE.py?style=social)](https://github.com/vpuri3/FLARE.py/stargazers)
+[![Hugging Face Paper](https://img.shields.io/badge/Hugging%20Face-Paper-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/papers/2508.12594)
+[![arXiv](https://img.shields.io/badge/arXiv-2508.12594-B31B1B?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2508.12594)
 
 ![FLARE architecture overview](/assets/flare-overview.png)
+{{< /projectcard >}}
+
+{{< projectcard >}}
+### FLARE for Language Modeling (Ongoing dissertation work)
+*Decoder-only architectures | 2025--Present*
+
+- Extending FLARE to decoder-only next-token prediction with causal attention.
+- Enabling adaptive attention state size to control memory and compute during training and inference.
+- Implementing fused Triton kernels for causal training, prefill, and decode.
+
+[![YouTube](https://img.shields.io/badge/YouTube-Thesis%20Proposal-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=8h9EXJqQUi0)
 {{< /projectcard >}}
 
 {{< projectcard >}}
@@ -52,7 +64,10 @@ Ongoing work extends FLARE to decoder-only language modeling. This involves impl
 - Retained physics-based Galerkin time evolution while learning expressive low-dimensional representations.
 - Attained 200x speedup over full-order simulations in transport-dominated regimes.
 
-[Project page](https://vpuri3.github.io/NeuralROMs.jl/dev/) | [Journal of Comp. Phys. paper](https://www.sciencedirect.com/science/article/pii/S0021999125002402) | [![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/NeuralROMs.jl) [![GitHub stars](https://img.shields.io/github/stars/vpuri3/NeuralROMs.jl?style=social)](https://github.com/vpuri3/NeuralROMs.jl/stargazers) | [Slides](https://slides.com/vedantpuri/snf-rom-wccm2024) | [Talk](https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm)
+[Project page](https://vpuri3.github.io/NeuralROMs.jl/dev/) | [JCP paper](https://www.sciencedirect.com/science/article/pii/S0021999125002402) | [![arXiv](https://img.shields.io/badge/arXiv-2405.14890-B31B1B?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2405.14890)
+[![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/NeuralROMs.jl)
+[![GitHub stars](https://img.shields.io/github/stars/vpuri3/NeuralROMs.jl?style=social)](https://github.com/vpuri3/NeuralROMs.jl/stargazers)
+[![YouTube Talk](https://img.shields.io/badge/YouTube-Talk-FF0000?logo=youtube&logoColor=white)](https://youtu.be/zio-_89DJ0g?si=sDVE1c0xJqzVi8bm)
 
 ![SNF-ROM online stage architecture](/assets/snfrom-online-stage.png)
 {{< /projectcard >}}

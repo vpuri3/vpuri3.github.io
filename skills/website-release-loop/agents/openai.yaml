@@ -1,0 +1,4 @@
+interface:
+  display_name: "Website Release Loop"
+  short_description: "Build, preview, and deploy vpuri3.github.io after edits."
+  default_prompt: "Use this skill to validate Hugo build, run local preview, and publish website changes to GitHub Pages."
