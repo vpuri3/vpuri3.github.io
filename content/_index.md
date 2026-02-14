@@ -94,6 +94,11 @@ For the past decade, I have used a Canon DSLR as an excuse to walk around and ph
 
 [Open portfolio page](/photography/) | [Flickr](https://www.flickr.com/photos/128280868@N05/)
 {{< /projectcard >}}
+
+{{< projectcard >}}
+### Hobbies
+- Sports: squash, golf, crossfit
+{{< /projectcard >}}
 {{< /card >}}
 
 {{< card id="open-source" >}}
