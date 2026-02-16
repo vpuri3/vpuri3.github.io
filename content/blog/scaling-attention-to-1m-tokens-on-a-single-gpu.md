@@ -15,6 +15,7 @@ Attention, the core mechanism of transformers, becomes prohibitively expensive a
 Rather than focusing on architectural novelty for its own sake, the goal is to understand attention as a communication operator and ask a simple question: can we keep the benefits of global message passing without paying the full quadratic cost?
 
 This post complements our latest paper ([arXiv:2508.12594](https://arxiv.org/abs/2508.12594)).
+See my [dissertation proposal talk](https://youtu.be/8h9EXJqQUi0?si=lweE4A-QYV-3fSV5&t=1176) on this topic!
 
 ![FLARE overview](/assets/blog/flare-post/FLARE.png)
 
@@ -229,7 +230,6 @@ Understanding why FLARE works requires looking at the structure of the gather–
 ### Gather–scatter as communication hubs
 
 Each latent token acts as both a pooling hub and a routing hub. During encoding, it aggregates information from tokens that align with its query pattern. During decoding, it distributes that information back to tokens that match its key pattern.
-
 This creates a contraction–expansion communication structure that efficiently mixes global information.
 
 ### Symmetric operators improve stability
@@ -239,7 +239,6 @@ The encode and decode steps are derived from the same query-key geometry, creati
 ### Fixed queries provide a stable routing structure
 
 Latent queries are learned but input independent. This gives a consistent communication basis across inputs, making the operator easier to optimize and interpret.
-
 The reduced query dynamism is compensated by expressive key and value encoders, which adapt routing patterns to each input.
 
 ### Repeated global mixing is more effective than latent refinement
