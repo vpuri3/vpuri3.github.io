@@ -10,21 +10,27 @@ Use this workflow after every website change.
 ## Quick Commands
 
 - Validate build: `bash skills/website-release-loop/scripts/release_loop.sh check`
-- Preview locally: `bash skills/website-release-loop/scripts/release_loop.sh preview`
+- Preview locally (foreground): `bash skills/website-release-loop/scripts/release_loop.sh preview`
+- Keep server alive in background: `bash skills/website-release-loop/scripts/release_loop.sh start`
+- Check background status: `bash skills/website-release-loop/scripts/release_loop.sh status`
+- Read recent logs: `bash skills/website-release-loop/scripts/release_loop.sh logs`
+- Restart background server: `bash skills/website-release-loop/scripts/release_loop.sh restart`
+- Stop background server: `bash skills/website-release-loop/scripts/release_loop.sh stop`
 - Publish (commit + push): `bash skills/website-release-loop/scripts/release_loop.sh publish "your commit message"`
 
 ## Workflow
 
 1. Run clean build.
 2. Fix any build or rendering issues.
-3. Start local server and review at `http://localhost:1313/`.
-4. Push to `master` to trigger `.github/workflows/Deploy.yml`.
+3. For manual editing sessions, use `start` so the server survives agent session changes.
+4. Review at `http://localhost:1313/`, monitor with `status`/`logs`, and use `restart` if needed.
+5. Push to `master` to trigger `.github/workflows/Deploy.yml`.
 
 ## Guardrails
 
 - Keep commit scope intentional; do not blindly include unrelated files.
 - Do not publish until user approves push.
-- If the server is already running on `1313`, stop the old process before starting a new one.
+- Prefer background `start` for long editing sessions; avoid relying on one-off foreground sessions.
 
 ## Notes
 

@@ -5,6 +5,7 @@ theme = 'PaperMod'
 
 [params]
 defaultTheme = 'dark'
+disableSpecial1stPost = true
 disableThemeToggle = false
 ShowReadingTime = false
 ShowShareButtons = false
@@ -61,10 +62,10 @@ url = '/work/'
 weight = 40
 
 [[menu.main]]
-identifier = 'thoughts'
-name = 'Thoughts'
-url = '/thoughts/'
-weight = 50
+identifier = 'blog'
+name = 'Blog'
+url = '/blog/'
+weight = 55
 
 [[menu.main]]
 identifier = 'photography'

@@ -17,7 +17,7 @@ title = "Home"
   I implement new architectures directly in PyTorch and Triton.
   My background spans high-performance computing, numerical analysis, and computational fluid dynamics.
   </p>
-  <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=2N-Q4YkAAAAJ">Google Scholar</a> | <a href="mailto:vedantpuri@cmu.edu"><code>vedantpuri@cmu.edu</code></a></p>
+  <p><a href="https://www.linkedin.com/in/vpuri3/">LinkedIn</a> | <a href="https://github.com/vpuri3">GitHub</a> | <a href="https://scholar.google.com/citations?user=YzzTeUAAAAAJ&hl=en&oi=ao">Google Scholar</a> | <a href="mailto:vedantpuri@cmu.edu"><code>vedantpuri@cmu.edu</code></a></p>
 </div>
 
 {{< card id="research-interests" >}}
