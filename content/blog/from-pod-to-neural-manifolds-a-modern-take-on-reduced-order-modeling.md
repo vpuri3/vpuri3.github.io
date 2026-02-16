@@ -176,8 +176,6 @@ $$
 
 can be computed using automatic differentiation. The key benefit is that PDE operators are evaluated directly on the learned representation without relying on auxiliary grids or finite-difference approximations. This makes the reduced model both grid-free and numerically stable.
 
-![paper-fig-2](/assets/blog/snf-rom-post/SNF-ROM-summary.png)
-
 Together, these two components are aimed at one goal: **do physics on the learned manifold**, not just reconstruction. The model is trained so that both the geometry of the manifold and the operators acting on it are well behaved during online simulation.
 
 ![SNF-ROM workflow: direct latent trajectory modeling with smooth neural fields](/assets/blog/flare-post/slide-038.png)
@@ -195,10 +193,11 @@ SNF-ROM uses a neural field decoder that maps coordinates and a low-dimensional 
 - **Neural field (continuous decoder):**  
   $$u(\mathbf{x}, t; \boldsymbol{\mu}) \approx f_\theta(\mathbf{x}, \tilde{u}(t,\boldsymbol{\mu}))$$
 
-- **Reduced state:**  
-  $\tilde{u}(t,\boldsymbol{\mu}) \in \mathbb{R}^r$ is the low-dimensional ROM state.
+- **Reduced state:**  $\tilde{u}(t,\boldsymbol{\mu}) \in \mathbb{R}^r$ is the low-dimensional ROM state.
 
 During the online stage, SNF-ROM evolves $\tilde{u}(t)$ using projection-based dynamics, while evaluating the PDE operators through **AD on the neural field**. This is the “physics with neural fields” part: you can differentiate the representation to form operators needed for the reduced dynamics, and then integrate the resulting reduced ODE with standard time-stepping.
+
+![paper-fig-2](/assets/blog/snf-rom-post/SNF-ROM-summary.png)
 
 ---
 
