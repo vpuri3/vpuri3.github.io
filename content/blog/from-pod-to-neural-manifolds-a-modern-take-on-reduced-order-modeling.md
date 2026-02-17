@@ -287,3 +287,11 @@ SNF-ROM is best understood as a ROM framework that explicitly supports *doing ph
 3. SNF-ROM shows that regularizing neural manifolds for **differentiation + integration** can materially improve robustness over standard autoencoder-based ROM pipelines.
 
 ---
+
+## References
+
+1. Puri, V. et al. *SNF-ROM: Projection-based nonlinear reduced order modeling with smooth neural fields*. arXiv (2024). [https://arxiv.org/abs/2405.14890](https://arxiv.org/abs/2405.14890)
+2. Puri, V. et al. *SNF-ROM: Projection-based nonlinear reduced order modeling with smooth neural fields*. Journal of Computational Physics (2025). DOI: [10.1016/j.jcp.2025.113957](https://doi.org/10.1016/j.jcp.2025.113957)
+3. Lee, K., and Carlberg, K. *Model reduction of dynamical systems on nonlinear manifolds using deep convolutional autoencoders*. Journal of Computational Physics (2020). [https://doi.org/10.1016/j.jcp.2019.108973](https://doi.org/10.1016/j.jcp.2019.108973)
+4. Lumley, J. L. *The structure of inhomogeneous turbulent flows*. Atmospheric Turbulence and Radio Wave Propagation (1967). [https://ndlsearch.ndl.go.jp/en/books/R100000136-I1570572700589710080](https://ndlsearch.ndl.go.jp/en/books/R100000136-I1570572700589710080)
+5. Holmes, P., Lumley, J. L., Berkooz, G., and Rowley, C. W. *Turbulence, Coherent Structures, Dynamical Systems and Symmetry* (2nd ed.). Cambridge University Press (2012). [https://doi.org/10.1017/CBO9780511919701](https://doi.org/10.1017/CBO9780511919701)

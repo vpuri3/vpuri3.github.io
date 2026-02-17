@@ -267,3 +267,11 @@ Several design principles emerge:
 FLARE shows that scaling attention is not only about approximating softmax more efficiently. By rethinking attention as a communication operator, we can design mechanisms that preserve global information flow while dramatically reducing cost.
 
 The broader lesson is that many large-scale problems have structure that can be exploited. Low-rank communication is one way to capture that structure without sacrificing flexibility, opening the door to practical million-token models on modest hardware.
+
+## References
+
+1. Puri, V. et al. *FLARE: Fast Low-rank Attention Routing Engine*. arXiv (2025). [https://arxiv.org/abs/2508.12594](https://arxiv.org/abs/2508.12594)
+2. Vaswani, A. et al. *Attention Is All You Need*. NeurIPS (2017). [https://arxiv.org/abs/1706.03762](https://arxiv.org/abs/1706.03762)
+3. Dao, T. et al. *FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness*. NeurIPS (2022). [https://arxiv.org/abs/2205.14135](https://arxiv.org/abs/2205.14135)
+4. PyTorch Docs. `torch.nn.functional.scaled_dot_product_attention`. [https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html](https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
+5. Tay, Y. et al. *Long Range Arena: A Benchmark for Efficient Transformers*. ICLR (2021). [https://arxiv.org/abs/2011.04006](https://arxiv.org/abs/2011.04006)

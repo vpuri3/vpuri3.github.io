@@ -48,3 +48,11 @@ Tetrehedral meshes are everywhere. Geometry is designed with splines and immidia
 I'm very curious about implicit geometry representations, particularly high order spectral representations (neural too because that's just a different basis to same difference) because it provides a bigger bang for your buck: you can accurately represent a more complicated function with the same number of points with chebychev distribution rather than uniform distribution (Runge phenomena). The issue with spectral geometry processing might be with patching, ie how to make different spectral pieces talk to each other. In Spectral Element Method, C0 continuity is handled via a gather-scatter operation, meaning that the adjacency matrix only needs to account for the boundary nodes.
 
 It would be interesting to learn how splines preserve locality, and how they impose cotinuity conditions across "elements".
+
+## References
+
+1. Brenner, S. C., and Scott, L. R. *The Mathematical Theory of Finite Element Methods* (3rd ed.). Springer (2008). [https://doi.org/10.1007/978-0-387-75934-0](https://doi.org/10.1007/978-0-387-75934-0)
+2. Evans, L. C. *Partial Differential Equations* (2nd ed.). AMS (2010). [https://bookstore.ams.org/gsm-19-r](https://bookstore.ams.org/gsm-19-r)
+3. Adams, R. A., and Fournier, J. J. F. *Sobolev Spaces* (2nd ed.). Academic Press (2003). [https://shop.elsevier.com/books/sobolev-spaces/adams/978-0-12-044143-3](https://shop.elsevier.com/books/sobolev-spaces/adams/978-0-12-044143-3)
+4. Quarteroni, A., and Rozza, G. (eds.). *Reduced Order Methods for Modeling and Computational Reduction*. Springer (2014). [https://doi.org/10.1007/978-3-319-02090-7](https://doi.org/10.1007/978-3-319-02090-7)
+5. Hughes, T. J. R., Cottrell, J. A., and Bazilevs, Y. *Isogeometric Analysis: CAD, Finite Elements, NURBS, Exact Geometry and Mesh Refinement*. CMAME (2005). [https://doi.org/10.1016/j.cma.2004.10.008](https://doi.org/10.1016/j.cma.2004.10.008)
