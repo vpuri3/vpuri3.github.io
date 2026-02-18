@@ -25,6 +25,13 @@ safari_pinned_tab = 'https://github.githubassets.com/favicons/favicon.svg'
 [markup.goldmark.renderer]
 unsafe = true
 
+[markup.goldmark.extensions.passthrough]
+enable = true
+
+[markup.goldmark.extensions.passthrough.delimiters]
+block = [["$$", "$$"]]
+inline = [["$", "$"]]
+
 [[params.socialIcons]]
 name = 'github'
 url = 'https://github.com/vpuri3'

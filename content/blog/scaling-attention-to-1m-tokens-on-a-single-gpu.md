@@ -8,8 +8,6 @@ TocOpen = true
 math = true
 +++
 
-## The story of FLARE: Fast Low-rank Attention Routing Engine
-
 Attention, the core mechanism of transformers, becomes prohibitively expensive at large sequence lengths. This post explains the ideas behind FLARE, an attention operator designed to retain global communication while scaling to million-token regimes on a single GPU.
 
 Rather than focusing on architectural novelty for its own sake, the goal is to understand attention as a communication operator and ask a simple question: can we keep the benefits of global message passing without paying the full quadratic cost?
@@ -43,15 +41,15 @@ $$
 \mathcal{L}(\boldsymbol{x}, t, \boldsymbol{u}; \boldsymbol{\mu}), \quad \boldsymbol{x}\in\Omega,
 $$
 </div>
-we view learning as approximating a solution operator \(\mathcal{G}\) that maps parameters to fields:
+we view learning as approximating a solution operator $\mathcal{G}$ that maps parameters to fields:
 <div>
 $$
 \boldsymbol{u}(\boldsymbol{x})=\mathcal{G}(\boldsymbol{\mu})(\boldsymbol{x}).
 $$
 </div>
-In practice, we train on many \(\boldsymbol{\mu}\to \boldsymbol{u}\) pairs and require generalization to unseen \(\boldsymbol{\mu}\). In the slide below, \(\boldsymbol{\mu}\) is effectively the geometry \(\Omega\), and the target is a strain field on unseen domains.
+In practice, we train on many $\boldsymbol{\mu}\to \boldsymbol{u}$ pairs and require generalization to unseen $\boldsymbol{\mu}$. In the slide below, $\boldsymbol{\mu}$ is effectively the geometry $\Omega$, and the target is a strain field on unseen domains.
 
-![Slide 15: PDE surrogate motivation](/assets/blog/flare-post/slide-057.png)
+![PDE surrogate motivation: mapping geometry to strain fields on unseen domains](/assets/blog/flare-post/slide-057.png)
 
 ## Token mixing in transformers
 
@@ -60,7 +58,7 @@ A transformer block is conceptually two operations:
 1. pointwise nonlinear transforms (MLPs),
 2. global message passing (self-attention).
 
-![Slide 16: Transformer ingredients for PDEs](/assets/blog/flare-post/slide-060.png)
+![Transformer as MLP plus global message passing, applied to PDE data](/assets/blog/flare-post/slide-060.png)
 
 For PDE data, we avoid token clustering heuristics and treat each mesh point as a token. Standard attention computes, for each output token, a distribution over all inputs:
 
@@ -71,23 +69,17 @@ $$
 
 This all-to-all routing is powerful but expensive. At million-token scale, even a single forward-backward pass can take tens of seconds. The goal is to keep global communication while reducing the number of messages that must be exchanged.
 
-![Slide 17: Quadratic self-attention bottleneck](/assets/blog/flare-post/slide-063.png)
+![Quadratic scaling of self-attention with sequence length](/assets/blog/flare-post/slide-063.png)
 
 ### Why global communication still matters
 
 In many physical systems, forward operators are local, but solution operators are effectively dense. A model that communicates only locally will miss long-range dependencies that determine the final field.
 
-However, physical signals are often smooth at resolved scales. Smoothness implies redundancy: nearby tokens frequently carry similar information for distant targets. This suggests we may not need to send separate messages from every token if we can aggregate similar ones.
+However, physical signals are often smooth at resolved scales. Smoothness means many high-frequency modes are weak; there is genuine redundancy in a fully resolved signal. So if two nearby source points carry nearly the same information for a far target point, we should be able to route one combined message instead of two separate ones — we do not need all $N^2$ interactions.
 
-This observation motivates a low-rank communication view of attention.
+![Sparse forward operator vs. dense solution operator in physical systems](/assets/blog/flare-post/slide-067.png)
 
-![Slide 18: Sparse forward operator vs dense solution operator](/assets/blog/flare-post/slide-067.png)
-
-### Are $N^2$ messages really necessary?
-
-Physical fields are usually smooth at resolved scales. Smoothness means many high-frequency modes are weak; in a fully resolved signal, there is redundancy. So if two nearby source points carry nearly the same information for a far target point, we should be able to route one combined message instead of two separate ones.
-
-![Navier-Stokes spectrum](/assets/blog/flare-post/navier_spectrum.png)
+![Navier-Stokes energy spectrum showing spectral decay](/assets/blog/flare-post/navier_spectrum.png)
 
 The core FLARE contribution is to operationalize this physics-guided redundancy into a sequence-agnostic attention mechanism that remains general-purpose.
 
@@ -113,7 +105,7 @@ FLARE implements global communication through a two-step **gather–scatter** me
 
 The basic attention primitive is **scaled dot-product attention**. Given queries $Q \in \mathbb{R}^{N_q \times d}$, keys $K \in \mathbb{R}^{N_k \times d}$, and values $V \in \mathbb{R}^{N_k \times d_v}$, attention is
 
-$$ \mathrm{SPDA}(Q,K,V) = \mathrm{softmax}\!\left(\frac{Q \cdot K^\top}{\sqrt{d}}\right)V.
+$$ \mathrm{SDPA}(Q,K,V) = \mathrm{softmax}\!\left(\frac{Q \cdot K^\top}{\sqrt{d}}\right)V.
 $$
 
 Naively, this suggests computing the score matrix $S = Q \cdot K^\top \in \mathbb{R}^{N_q \times N_k}$, applying softmax, and then multiplying by $V$. That approach is expensive because it materializes an $N_q \times N_k$ matrix.
@@ -168,7 +160,7 @@ $$
 
 The product $W_{\mathrm{dec}} \cdot W_{\mathrm{enc}} \in \mathbb{R}^{N \times N}$ is a dense global mixing matrix, but its rank is at most $M$. FLARE therefore achieves global communication at **$O(NM)$** cost per head (with $M \ll N$), and the SDPA kernels avoid ever forming the intermediate $N \times M$ or $M \times N$ attention matrices in memory.
 
-![Slide 20: FLARE in two steps](/assets/blog/flare-post/slide-074.png)
+![FLARE gather–scatter in two SDPA steps](/assets/blog/flare-post/slide-074.png)
 
 ---
 
@@ -201,10 +193,10 @@ def flare_multihead_mixer(Q, K, V):
 ```
 
 The full FLARE block stacks this mixer with standard projection/MLP components:
-![Slide 21: Low-rank token communication](/assets/blog/flare-post/FLARE.png)
+![FLARE block: low-rank mixer with projection and MLP components](/assets/blog/flare-post/FLARE.png)
 
-And here are the scaling results:
-![Slide 21: Low-rank token communication](/assets/blog/flare-post/time_memory_bwd_fp16.png)
+Compared to standard attention, FLARE reduces both time and peak memory roughly linearly with $M/N$:
+![Time and memory in the backward pass (FP16) as a function of sequence length](/assets/blog/flare-post/time_memory_bwd_fp16.png)
 
 ---
 
@@ -212,14 +204,11 @@ And here are the scaling results:
 
 FLARE enables million-token training on a single GPU while maintaining strong accuracy on PDE surrogate tasks. The key improvement is not only asymptotic scaling but a practical runtime and memory profile that allows end-to-end training.
 
-![Slide 21: Low-rank token communication](/assets/blog/flare-post/slide-082.png)
+![FLARE accuracy on PDE surrogate benchmarks](/assets/blog/flare-post/slide-082.png)
 
-On sequence benchmarks such as Long Range Arena, the operator remains competitive with other efficient transformer approaches, showing that the mechanism is broadly applicable beyond scientific data.
+On sequence benchmarks such as Long Range Arena, FLARE is competitive with efficient-transformer alternatives and maintains strong average accuracy, showing that the mechanism is not restricted to PDE-only structure.
 
-
-On sequence benchmarks, such as Long Range Arena, FLARE is competitive with efficient-transformer alternatives and maintains strong average accuracy, showing that the method is not restricted to PDE-only structure.
-
-![Slide 27: Long Range Arena results](/assets/blog/flare-post/slide-091.png)
+![FLARE results on Long Range Arena](/assets/blog/flare-post/slide-091.png)
 
 ---
 
@@ -230,6 +219,7 @@ Understanding why FLARE works requires looking at the structure of the gather–
 ### Gather–scatter as communication hubs
 
 Each latent token acts as both a pooling hub and a routing hub. During encoding, it aggregates information from tokens that align with its query pattern. During decoding, it distributes that information back to tokens that match its key pattern.
+
 This creates a contraction–expansion communication structure that efficiently mixes global information.
 
 ### Symmetric operators improve stability
@@ -239,6 +229,7 @@ The encode and decode steps are derived from the same query-key geometry, creati
 ### Fixed queries provide a stable routing structure
 
 Latent queries are learned but input independent. This gives a consistent communication basis across inputs, making the operator easier to optimize and interpret.
+
 The reduced query dynamism is compensated by expressive key and value encoders, which adapt routing patterns to each input.
 
 ### Repeated global mixing is more effective than latent refinement
