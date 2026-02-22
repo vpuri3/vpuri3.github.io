@@ -3,10 +3,13 @@ title = "From POD to neural manifolds: a modern take on reduced order modeling"
 date = 2026-02-15T00:00:00-05:00
 draft = false
 description = "From classical projection methods to smooth neural field ROMs"
+author = "Vedant Puri and Claude Sonnet 4.6"
 ShowToc = true
 TocOpen = true
 math = true
 +++
+
+> **Running notes** — last updated 2026-02-22. This is a living document, not a polished article; I update it frequently as my understanding develops.
 
 ## From POD to neural manifolds
 

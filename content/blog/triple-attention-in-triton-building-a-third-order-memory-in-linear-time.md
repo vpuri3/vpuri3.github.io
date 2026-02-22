@@ -3,10 +3,13 @@ title = "Triple Attention in Triton: Building a Third-Order Memory in Linear Tim
 date = 2026-02-18T00:00:00-05:00
 draft = false
 description = "Designing and implementing third-order attention with Triton kernels and linear-time sequence scaling."
+author = "Vedant Puri and Claude Sonnet 4.6"
 ShowToc = true
 TocOpen = true
 math = true
 +++
+
+> **Running notes** — last updated 2026-02-22. This is a living document, not a polished article; I update it frequently as my understanding develops.
 
 ## Motivation
 
@@ -69,19 +72,19 @@ The memory cost is independent of sequence length $N$.
 
 ---
 
-## Forward pass
+## Reference implementation
 
-The forward pass is split into two phases, each corresponding to a fused Triton kernel.
+The forward pass decomposes into two phases. The code below is the PyTorch einsum reference, corresponding to [`TripleAttention.attn_einsum`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) in `lra/models/backends.py`. A fused Triton kernel that tiles over state indices and streams over the sequence is described in the [Triton kernel implementation](#triton-kernel-implementation) section below.
 
-### Phase 1: Streaming state construction
+### Phase 1: State construction
 
-Each kernel instance tiles the indices $(i, j, k)$ of the state tensor, streams over tokens in chunks (e.g. 4096 at a time), and accumulates contributions into `STATE` using atomic adds in fp32.
+Each token contributes an outer product to the state tensor via a single reduction over $N$:
 
 $$
 S_{ijk} = \sum_{n=1}^N K_{1,n,i} \cdot V_{n,j} \cdot K_{2,n,k}
 $$
 
-No token-token matrix is constructed; streaming over the sequence makes this linear in $N$. As a reference:
+No token-token matrix is constructed; a single reduction over $N$ makes this linear in sequence length.
 
 ```python {linenos=false}
 import torch
@@ -103,7 +106,7 @@ def build_triple_state(k1, k2, v):
                         k1.float(), v.float(), k2.float())
 ```
 
-Complexity: **O(N D_q^2 D_v)** — linear in sequence length. The Triton kernel tiles over $(i,j,k)$ and streams over $n$ to avoid materializing the full intermediate.
+Complexity: **O(N D_q^2 D_v)** — linear in sequence length.
 
 ---
 
@@ -160,6 +163,63 @@ def triple_attn(q1, q2, k1, k2, v):
     y     = read_triple_state(q1, q2, state)  # [B, H, N, Dv]
     return y.to(v.dtype)
 ```
+
+---
+
+## Triton kernel implementation
+
+The einsum reference above is correct and easy to read, but relies on PyTorch to schedule memory and compute. The fused Triton kernel in [`lra/models/triton/triple.py`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/triple.py) takes explicit control of tiling and streaming, enabling high throughput at long sequence lengths.
+
+### Two-kernel forward pass
+
+**`triple_fwd_state_kernel`** tiles over $(i, j, k)$ state indices. Each kernel instance streams over all $N$ tokens in chunks of `CHUNK_N = 4096`, accumulating its tile of `STATE` via atomic adds in fp32.
+
+**`triple_fwd_out_kernel`** tiles over tokens. Each instance contracts its tile of tokens against the precomputed `STATE` to produce the output.
+
+### Six-kernel backward pass
+
+The backward pass uses six Triton kernels: one accumulates `dSTATE` from output gradients, three compute `dK1`, `dK2`, `dV` from `dSTATE`, and two compute `dQ1`, `dQ2` from the saved `STATE`.
+
+### Key design choices
+
+**Tiling over $(i, j, k)$.** Independent kernel instances own `BLOCK_I × BLOCK_J × BLOCK_K` tiles of the $D_q \times D_v \times D_q$ state, giving full parallelism over all $D_q^2 D_v$ state entries.
+
+**Streaming over $N$ in chunks.** Tokens are consumed in chunks of `CHUNK_N = 4096`. Per-tile SRAM usage stays constant in $N$, making linear scaling concrete rather than just asymptotic.
+
+**fp32 accumulation with atomic adds.** `STATE` is allocated in fp32 and accumulated with atomic adds across parallel kernel instances. Inputs and outputs use fp16/bf16.
+
+**H100 tensor cores.** TF32 precision is enabled for fp32 matmuls, exploiting H100 tensor core throughput.
+
+### Enabling the kernel
+
+`TripleAttention` in [`lra/models/backends.py`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) selects between the einsum reference and the Triton kernel via `use_triton`:
+
+```python {linenos=false}
+from lra.models.backends import TripleAttention
+
+# Einsum reference (default, any device)
+attn = TripleAttention(channel_dim=256, num_heads=8, use_triton=False)
+
+# Fused Triton kernel (CUDA, H100-optimized)
+attn = TripleAttention(channel_dim=256, num_heads=8, use_triton=True)
+```
+
+Internally, `use_triton=True` dispatches to `TripleAttentionFunction.apply` from `triton/triple.py`.
+
+---
+
+## Performance
+
+Both implementations have the same asymptotic complexity — $O(N D_q^2 D_v)$ — and neither constructs an $N \times N$ attention matrix. The Triton kernel targets throughput at the constant-factor level:
+
+| Dimension | Einsum reference | Triton kernel |
+|---|---|---|
+| Sequence processing | Single einsum reduction | Chunked streaming (4096/chunk) |
+| State tiling | Single launch | Parallel $(i,j,k)$ tiles |
+| Backward pass | PyTorch autograd | 6 fused kernels |
+| Hardware targeting | Generic | H100 tensor cores, TF32 |
+
+_Performance comparison plots will be added here._
 
 ---
 
@@ -274,9 +334,9 @@ Exploring that extension is ongoing work.
 
 Triple attention is not just a kernel experiment — it is an exploration of structured global memory.
 
-By fusing state construction and output contraction in Triton, we obtain linear scaling in sequence length, stable mixed-precision execution, and a flexible multilinear attention primitive. This kernel serves as a foundation for further experiments in structured and adaptive attention mechanisms.
+By pairing the einsum reference with a fused Triton kernel, we obtain linear scaling in sequence length, stable mixed-precision execution, and a flexible multilinear attention primitive that can be profiled and tuned for specific hardware targets.
 
-The full implementation is available in the FLARE repository alongside the paper ([arXiv:2508.12594](https://arxiv.org/abs/2508.12594)).
+The full implementation — einsum reference and Triton kernel — lives in the FLARE repository: [`lra/models/backends.py`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) and [`lra/models/triton/triple.py`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/triple.py). See also the paper ([arXiv:2508.12594](https://arxiv.org/abs/2508.12594)).
 
 ---
 
@@ -287,3 +347,6 @@ The full implementation is available in the FLARE repository alongside the paper
 3. Kozachinskiy, A. et al. *Strassen Attention, Split VC Dimension and Compositionality in Transformers*. arXiv (2025). [https://arxiv.org/abs/2501.19215](https://arxiv.org/abs/2501.19215)
 4. Roy, A. et al. *Fast and Simplex: 2-Simplicial Attention in Triton*. arXiv (2025). [https://arxiv.org/abs/2507.02754](https://arxiv.org/abs/2507.02754)
 5. Qin, Z. et al. *The Devil in Linear Transformer*. arXiv (2022). [https://arxiv.org/abs/2210.10340](https://arxiv.org/abs/2210.10340)
+6. Puri, V. et al. *FLARE: Fast Low-rank Attention Routing Engine*. arXiv (2025). [https://arxiv.org/abs/2508.12594](https://arxiv.org/abs/2508.12594)
+7. FLARE.py. `lra/models/backends.py`. [https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py)
+8. FLARE.py. `lra/models/triton/triple.py`. [https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/triple.py](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/triple.py)

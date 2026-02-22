@@ -3,10 +3,13 @@ title = "Higher-Order Attention in Linear Time: Multilinear Memories and Simplex
 date = 2026-02-16T00:00:00-05:00
 draft = false
 description = "A practical tour of linear attention, its bottlenecks, and why multilinear / simplex-style attention might help"
+author = "Vedant Puri and Claude Sonnet 4.6"
 ShowToc = true
 TocOpen = true
 math = true
 +++
+
+> **Running notes** — last updated 2026-02-22. This is a living document, not a polished article; I update it frequently as my understanding develops.
 
 ## Beyond pairwise attention
 
@@ -256,6 +259,8 @@ def multilinear_attn(q, ks, vs):
     return q @ state
 ```
 
+Open-source: [`MultilinearAttention`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) in `lra/models/backends.py`.
+
 Strassen-style linearized mixing can be viewed as another structured memory composition:
 
 ```python {linenos=false}
@@ -292,6 +297,8 @@ def strassen_linear_attn(q, k1, v1, k2, v2, g1, g2, g3, g4, scale=None):
     y4 = q @ (S1 * S2)
     return y1 * g1 + y2 * g2 + y3 * g3 + y4 * g4
 ```
+
+Open-source: [`StrassenAttention`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) in `lra/models/backends.py`.
 
 ---
 
@@ -354,6 +361,8 @@ def quad_attn(q1, q2, q3, k1, k2, k3, v):
     return torch.einsum('bhni,bhijkl,bhnk,bhnl->bhnj', q1, state, q2, q3)
 ```
 
+Open-source: [`TripleAttention`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) and [`QuadAttention`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) in `lra/models/backends.py`. `TripleAttention` also supports a fused [Triton kernel](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/triple.py) via `use_triton=True` — see the [triple attention post](/blog/triple-attention-in-triton-building-a-third-order-memory-in-linear-time/).
+
 ---
 
 ## Where low-rank bottlenecks fit (and why linearizing FLARE collapses)
@@ -385,6 +394,8 @@ def flare_mixer(q, k, v, scale=1.0):
     y  = F.scaled_dot_product_attention(k, qb, z, scale=scale)  # [B, H, N, D]
     return y
 ```
+
+Open-source: [`FLARE`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/backends.py) in `lra/models/backends.py`. See the [FLARE paper](https://arxiv.org/abs/2508.12594) and the [scaling post](/blog/scaling-attention-to-1m-tokens-on-a-single-gpu/).
 
 ---
 

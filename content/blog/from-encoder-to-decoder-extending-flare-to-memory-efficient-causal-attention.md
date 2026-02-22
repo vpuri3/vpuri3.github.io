@@ -3,10 +3,13 @@ title = "From Encoder to Decoder: Extending FLARE to Memory-Efficient Causal Att
 date = 2026-02-18T00:00:00-05:00
 draft = false
 description = "How FLARE evolves from bidirectional encoder attention to scalable causal decoder-only training and inference."
+author = "Vedant Puri and Claude Sonnet 4.6"
 ShowToc = true
 TocOpen = true
 math = true
 +++
+
+> **Running notes** — last updated 2026-02-22. This is a living document, not a polished article; I update it frequently as my understanding develops.
 
 ## Motivation
 
@@ -167,7 +170,7 @@ def causal_flare_decode_step(q, k_t, v_t, U, d, mu, scale=1.0):
 
 ---
 
-## Algorithm 2: dense causal FLARE (prefill-oriented)
+## Algorithm 2: dense causal FLARE
 
 Define scores:
 
@@ -195,7 +198,52 @@ W = C A^\top,
 Y = (W \odot M_{\mathrm{causal}})V.
 $$
 
-This dense form is matmul-friendly and efficient for training, but computing $\exp(S)$ directly is numerically unstable for long contexts in mixed precision — exponents of large scores overflow in BF16. Algorithm 3 fixes this.
+Writing the token output explicitly by substituting $C_{t,m} = P_{t,m}/D_{t,m}$ and expanding $W_{t,\tau} = \sum_m C_{t,m} A_{\tau,m}$:
+
+$$
+y_t
+= \sum_{\tau \le t}
+\left(\,\sum_{m=1}^M
+\frac{P_{t,m}}{\displaystyle\sum_{u \le t}\exp(S_{u,m})}
+\,\exp(S_{\tau,m})\right) v_\tau.
+$$
+
+$P_{t,m} = \mathrm{softmax}_m(S_{t,:})$ can be precomputed cheaply since softmax is over the small dimension $M$. The hard part is the factor
+
+$$
+\frac{\exp(S_{\tau,m})}{\displaystyle\sum_{u \le t}\exp(S_{u,m})},
+$$
+
+which carries three independent indices: the query token $t$, the latent $m$, and the key token $\tau$. Materialising the full weight tensor $W$ inside a kernel requires holding the $[C, M, C]$ intermediate in registers — a third-order object that blows up register pressure and degrades occupancy even for moderate chunk sizes.
+
+### Chunkwise training context
+
+To set context, consider **chunkwise causal linear attention** — the structure that causal FLARE training mirrors. For causal linear attention, the state $S_t = \sum_{\tau \le t} k_\tau v_\tau^\top$ in chunk $c$ decomposes as
+
+$$
+S_t = \underbrace{\sum_{\tau < cC} k_\tau v_\tau^\top}_{S_{\text{prefix}}}
+    + \underbrace{\sum_{\substack{\tau \ge cC \\ \tau \le t}} k_\tau v_\tau^\top}_{S_{\text{intra}}},
+$$
+
+giving $y_t = q_t^\top(S_{\text{prefix}} + S_{\text{intra}})$. The prefix state propagates between chunks via a running cumulative sum; within each chunk the intra term forms a $C \times C$ lower-triangular matrix. This three-phase structure — chunk-wise $K^\top V$, prefix cumsum, fused inter+intra-chunk pass — is exactly what [`lra/models/triton/causal_linear.py`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/causal_linear.py) implements.
+
+For causal FLARE, Algorithm 2 is the analogous dense form with $W_{\text{intra}} = CA^\top$ giving a $C \times C$ interaction matrix. Conceptually this is the right structure. In practice, two problems prevent using it directly.
+
+**Problem 1 — register pressure.** Computing $W_{t,\tau}$ requires $\exp(S_{\tau,m})$ live for all $(\tau, m)$ simultaneously. Inside a Triton kernel this lives in registers; the $[C, M]$ tile inflates pressure and drops occupancy for any non-trivial $C$ and $M$.
+
+**Problem 2 — stability.** A natural attempt is to subtract the per-token max $\mu_t = \max_m S_{t,m}$ before computing $P_{t,m}$. This stabilises the softmax over $M$ — but not the causal prefix sum. The denominator $\sum_{u \le t} \exp(S_{u,m})$ still involves raw exponentials over the token dimension $t$, which can overflow even after $\mu_t$ is removed.
+
+### Why Algorithm 3 does not rescue Algorithm 2
+
+Algorithm 3 fixes the stability problem by computing the running prefix max
+
+$$
+R_{t,m} = \max_{\tau \le t}\, S_{\tau,m}
+$$
+
+via a sequential token loop, so every exponential becomes $\exp(S - R_{t,m}) \in (0,1]$. But that sequential token loop must complete before the dense matmul — and its cost is already comparable to running Algorithm 1 outright.
+
+If a token-sequential pass is unavoidable, **Algorithm 1 is the simpler and faster choice**: it fuses the running-max update, denominator accumulation, and numerator accumulation into a single pass with $O(MD)$ state per step and no register-pressure problem. For the small chunk sizes used in practice ($C \approx 32$–$128$), Algorithm 1's token loop fits comfortably in registers and achieves high occupancy. There is no benefit to first running a prefix-statistics loop and then materialising a dense $C \times C$ kernel.
 
 ---
 
@@ -311,7 +359,7 @@ def causal_flare_prefill(q, k, v, scale=1.0):
 
 Causal FLARE supports three operational regimes, each with different priorities.
 
-**Teacher-forced training** processes the full sequence in parallel and is throughput-oriented. Algorithm 3 is the right choice: stable prefix statistics, chunking over time to avoid materializing $T \times T$, and fused kernels for arithmetic intensity.
+**Teacher-forced training** is throughput-oriented and uses chunkwise processing. Algorithm 1 is the inner hot-loop kernel for each chunk ($C \approx 32$–$128$): its recurrent token pass fits in registers and achieves high occupancy. The inter-chunk prefix denominator $D_{\text{prefix},m}$ is accumulated between chunks via a running sum. Algorithm 3 is the right choice when a larger-chunk or full-sequence dense kernel is preferred and the sequential prefix-statistics pass is acceptable.
 
 **Inference prefill** is algorithmically identical to training but with a different blocking profile. Prefill is latency-sensitive and may benefit from different tile sizes and more aggressive kernel fusion than the training path.
 
@@ -321,12 +369,10 @@ Causal FLARE supports three operational regimes, each with different priorities.
 
 ## Adaptive attention state size
 
-A practical FLARE advantage is controllable latent/state budget:
+- More states mean more latency? Can we adaptively drop latents at inference time?
+- Think of latent tokens as experts in MoE? Can we add more latents at finetune time to learn new capabilities?
 
-- Larger state in prefill for fidelity
-- Smaller state in decode for throughput
-
-This exposes a direct compute-memory-accuracy knob.
+This exposes a direct compute vs. accuracy tradeoff.
 
 ---
 
@@ -350,3 +396,4 @@ A few implementation details matter disproportionately.
 2. Vaswani, A. et al. *Attention Is All You Need*. NeurIPS (2017). [https://arxiv.org/abs/1706.03762](https://arxiv.org/abs/1706.03762)
 3. Dao, T. et al. *FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness*. NeurIPS (2022). [https://arxiv.org/abs/2205.14135](https://arxiv.org/abs/2205.14135)
 4. Qin, Z. et al. *The Devil in Linear Transformer*. arXiv (2022). [https://arxiv.org/abs/2210.10340](https://arxiv.org/abs/2210.10340)
+5. FLARE.py. `lra/models/triton/causal_linear.py`. [https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/causal_linear.py](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/causal_linear.py)

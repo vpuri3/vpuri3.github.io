@@ -3,10 +3,13 @@ title = "Scaling attention to 1M tokens on a single GPU"
 date = 2026-02-16T00:00:00-05:00
 draft = false
 description = "The story of FLARE: Fast Low-rank Attention Routing Engine"
+author = "Vedant Puri and Claude Sonnet 4.6"
 ShowToc = true
 TocOpen = true
 math = true
 +++
+
+> **Running notes** — last updated 2026-02-22. This is a living document, not a polished article; I update it frequently as my understanding develops.
 
 Attention, the core mechanism of transformers, becomes prohibitively expensive at large sequence lengths. This post explains the ideas behind FLARE, an attention operator designed to retain global communication while scaling to million-token regimes on a single GPU.
 
