@@ -71,63 +71,95 @@ The memory cost is independent of sequence length $N$.
 
 ## Forward pass
 
-The forward pass is split into two fused Triton kernels.
+The forward pass is split into two phases, each corresponding to a fused Triton kernel.
 
 ### Phase 1: Streaming state construction
 
-Kernel:
-```
-triple_fwd_state_kernel
-```
-
-Each instance of the kernel:
-
-- Tiles indices $(i, j, k)$ of the state tensor.
-- Streams over tokens in chunks (`CHUNK_N`, e.g., 4096).
-- Accumulates contributions into `STATE` using atomic adds.
-
-Conceptually:
+Each kernel instance tiles the indices $(i, j, k)$ of the state tensor, streams over tokens in chunks (e.g. 4096 at a time), and accumulates contributions into `STATE` using atomic adds in fp32.
 
 $$
 S_{ijk} = \sum_{n=1}^N K_{1,n,i} \cdot V_{n,j} \cdot K_{2,n,k}
 $$
 
-Key properties:
+No token-token matrix is constructed; streaming over the sequence makes this linear in $N$. As a reference:
 
-- Complexity is **O(N D_q^2 D_v)**.
-- No token-token matrix is constructed.
-- Streaming over sequence makes it linear in $N$.
-- fp32 accumulation ensures stability.
+```python {linenos=false}
+import torch
 
-This phase builds a compact global memory.
+def build_triple_state(k1, k2, v):
+    """
+    Phase 1: accumulate the third-order global memory.
+
+    Args:
+        k1: [B, H, N, Dq]    first key projection
+        k2: [B, H, N, Dq]    second key projection
+        v:  [B, H, N, Dv]    value projection
+
+    Returns:
+        state: [B, H, Dq, Dv, Dq]    third-order state (fp32)
+    """
+    # S[b,h,i,j,k] = sum_n  k1[n,i] * v[n,j] * k2[n,k]
+    return torch.einsum('bhni,bhnj,bhnk->bhijk',
+                        k1.float(), v.float(), k2.float())
+```
+
+Complexity: **O(N D_q^2 D_v)** — linear in sequence length. The Triton kernel tiles over $(i,j,k)$ and streams over $n$ to avoid materializing the full intermediate.
 
 ---
 
 ### Phase 2: Output contraction
 
-Kernel:
-```
-triple_fwd_out_kernel
-```
-
-This kernel:
-
-- Tiles over tokens (`BLOCK_N_OUT`)
-- Contracts $Q_1$ and $Q_2$ with the precomputed `STATE`
-- Writes output blocks to `O`
-
-Conceptually:
+Each token reads from the precomputed `STATE` via two learned query projections:
 
 $$
 O_n = \sum_{i,j,k} Q_{1,n,i} \cdot S_{ijk} \cdot Q_{2,n,k}
 $$
 
-Interpretation:
+The state acts as a global communication hub — each token independently decides how to read from it via $Q_1$ and $Q_2$.
 
-- The state is a global communication hub.
-- Each token decides how to read from it via two learned projections.
+```python {linenos=false}
+def read_triple_state(q1, q2, state):
+    """
+    Phase 2: contract each token's queries against the global state.
 
-This is structurally similar to routing through a learned latent space, but implemented as a multilinear contraction.
+    Args:
+        q1:    [B, H, N, Dq]         first query projection
+        q2:    [B, H, N, Dq]         second query projection
+        state: [B, H, Dq, Dv, Dq]   precomputed third-order memory
+
+    Returns:
+        y: [B, H, N, Dv]    token outputs
+    """
+    # y[b,h,n,j] = sum_{i,k}  q1[n,i] * state[i,j,k] * q2[n,k]
+    return torch.einsum('bhni,bhijk,bhnk->bhnj',
+                        q1.float(), state, q2.float())
+```
+
+This is structurally similar to routing through a learned latent space, but realized as a multilinear contraction.
+
+### Full reference
+
+```python {linenos=false}
+import torch
+
+def triple_attn(q1, q2, k1, k2, v):
+    """
+    Triple attention: linear-time third-order global memory.
+
+    Args:
+        q1: [B, H, N, Dq]    first query projection
+        q2: [B, H, N, Dq]    second query projection
+        k1: [B, H, N, Dq]    first key projection
+        k2: [B, H, N, Dq]    second key projection
+        v:  [B, H, N, Dv]    value projection
+
+    Returns:
+        y:  [B, H, N, Dv]    token outputs
+    """
+    state = build_triple_state(k1, k2, v)     # [B, H, Dq, Dv, Dq]
+    y     = read_triple_state(q1, q2, state)  # [B, H, N, Dv]
+    return y.to(v.dtype)
+```
 
 ---
 

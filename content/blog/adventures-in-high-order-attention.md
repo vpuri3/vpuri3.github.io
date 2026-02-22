@@ -42,16 +42,29 @@ $$y_i = \sum_{j=1}^N \frac{\exp(q_i^\top k_j)}{\sum_{\ell=1}^N \exp(q_i^\top k_\
 The quadratic cost comes from the pairwise interaction matrix $QK^\top \in \mathbb{R}^{N\times N}$.
 A useful mental model is: each query $q_i$ produces its own distribution over keys, so it can route information in a token-specific way. That “personalized routing” is what many linear-time mechanisms struggle to preserve.
 
-Implementation sketch:
+```python {linenos=false}
+import torch
 
-```python
-q, k, v = self.qkv_proj(x).chunk(3, dim=-1)
-q, k, v = [rearrange(z, 'b n (h d) -> b h n d', h=self.num_heads) for z in [q, k, v]]
+def sdpa_naive(q, k, v):
+    """
+    Scaled dot-product attention.
 
-y = F.scaled_dot_product_attention(
-    q, k, v,
-    scale=self.scale,
-)
+    Args:
+        q: [B, H, N, D]    queries (already split across heads)
+        k: [B, H, N, D]    keys
+        v: [B, H, N, D]    values
+        scale: float       attention scale (default 1.0)
+
+    Returns:
+        y: [B, H, N, D]    output
+    """
+    scale = q.size(-1) ** -0.5
+
+    S = (q @ k.mT) * scale # [B, H, N, N] attn logits
+    A = S.softmax(dim=-1)  # [B, H, N, N] attn weights
+    y = A @ v              # [B, H, N, D]
+    
+    return y
 ```
 
 ---
@@ -80,18 +93,32 @@ $$y_i = \frac{\tilde q_i^\top\left(\sum_{j=1}^N \tilde k_j v_j^\top\right)}{\til
 If we define a pooled “memory” state $S=\tilde K^\top V \in \mathbb{R}^{D\times D}$ and $z=\tilde K^\top\mathbf{1}\in\mathbb{R}^D$, we can write $Y = \dfrac{\tilde Q \cdot S}{\tilde Q \cdot z}$. This is linear in $N$ (up to constants) because the expensive terms are reductions over the sequence.
 At a systems level, linear attention is appealing: you can stream over tokens, maintain a running state, and avoid materializing $N\times N$ matrices.
 
-Implementation sketch:
+```python {linenos=false}
+import torch
 
-```python
-q = self.kernel(q)
-k = self.kernel(k)
+def linear_attn(q, k, v, kernel=None):
+    """
+    Linear attention: linear-time global mixing via associative state reduction.
 
-state = k.mT @ v                    # [B, H, D, D]
-k_sum = k.sum(dim=2).unsqueeze(-1)  # [B, H, D, 1]
+    Args:
+        q:      [B, H, N, D]    queries
+        k:      [B, H, N, D]    keys
+        v:      [B, H, N, D]    values
+        kernel: callable        feature map φ applied to q and k (e.g. elu + 1)
 
-num = q @ state
-den = q @ k_sum
-out = num / (den + 1e-6)
+    Returns:
+        y: [B, H, N, D]    output
+    """
+    if kernel is not None:
+        q = kernel(q)
+        k = kernel(k)
+
+    state = k.mT @ v                    # [B, H, D, D]
+    k_sum = k.sum(dim=2).unsqueeze(-1)  # [B, H, D, 1]
+
+    num = q @ state
+    den = q @ k_sum
+    return num / (den + 1e-6)
 ```
 
 ---
@@ -113,40 +140,6 @@ The critical observation is simple: $\tilde q_i$ changes with $i$, but the memor
 **The bottleneck lives in feature space.** Softmax attention carries $O(N^2)$ interaction capacity through an $N\times N$ attention map. Linear attention collapses this into a feature-space quadratic form: $S \in \mathbb{R}^{D\times D}$. Unless $\phi$ is carefully chosen (e.g., kernelized approximations of $\exp$), this can be structurally less expressive, not merely a “worse approximation.”
 
 This is why the linear-transformer literature has so many “patches”: better feature maps (Performer/FAVOR+ style), gating and recurrence (RetNet/RWKV-like ideas), low-rank bottlenecks (Nyström, latent tokens), and various normalization tricks (including the practical observation that removing row-normalization and stabilizing with RMSNorm at the end can sometimes help).
-
-For example, Linformer compresses sequence length before SDPA:
-
-```python
-E_k = self.E_k[:N]
-E_v = self.E_v[:N]
-k_lin = torch.einsum('b h n d, n k -> b h k d', k, E_k)
-v_lin = torch.einsum('b h n d, n k -> b h k d', v, E_v)
-y = F.scaled_dot_product_attention(q, k_lin, v_lin, scale=self.scale)
-```
-
-Performer uses random-feature maps and linearized normalization:
-
-```python
-q_prime = self._feature_map(q)
-k_prime = self._feature_map(k)
-k_sum = k_prime.sum(dim=2)
-kv = torch.einsum('b h n m, b h n d -> b h m d', k_prime, v)
-num = torch.einsum('b h n m, b h m d -> b h n d', q_prime, kv)
-den = torch.einsum('b h n m, b h m -> b h n', q_prime, k_sum) + self.eps
-out = num / den.unsqueeze(-1)
-```
-
-And MEGA-style blocks combine EMA memory with gated attention:
-
-```python
-x_ema = self.ema(x)
-q = self.q_proj(x_ema); k = self.k_proj(x_ema); v = self.v_proj(x)
-y_attn = self.mha(q, k, v, attention_mask=attention_mask)
-gate1 = self.gate_proj1(x_ema).sigmoid()
-gate2 = self.gate_proj2(x_ema).sigmoid()
-H = F.silu(x_ema @ self.Wh + (y_attn * gate1) @ self.Uh + self.bh)
-y = (H * gate2) + (1 - gate2) * x
-```
 
 ---
 
@@ -240,24 +233,64 @@ In practice, the open questions dominate:
 
 So far, my results have not been clean enough to recommend this as a drop-in replacement. The main value for me has been as a lens: if the bottleneck is the shared memory $S$, one way to increase expressivity is to increase the *structure* of the memory interaction without blowing up the $N$ dependence.
 
-Implementation sketch (product of multiple states):
+```python {linenos=false}
+import torch
 
-```python
-states = ks.mT @ vs  # [K, B, H, D, D]
-state = states.prod(dim=0)
-out = q @ state
+def multilinear_attn(q, ks, vs):
+    """
+    Multilinear attention: elementwise product of L feature-space memories.
+
+    Each (ks[l], vs[l]) pair contributes one D×D memory state; the states
+    are multiplied elementwise before contracting with q.
+
+    Args:
+        q:  [B, H, N, D]       queries
+        ks: [L, B, H, N, D]    L key projections
+        vs: [L, B, H, N, D]    L value projections
+
+    Returns:
+        y: [B, H, N, D]    output
+    """
+    states = ks.mT @ vs          # [L, B, H, D, D]
+    state  = states.prod(dim=0)  # [B, H, D, D]
+    return q @ state
 ```
 
 Strassen-style linearized mixing can be viewed as another structured memory composition:
 
-```python
-S1 = (k1.mT / sN) @ (v1 / sN)
-S2 = (k2.mT / sN) @ (v2 / sN)
-y1 = (q @ S1) * v2_sum
-y2 = (S1 * S2).sum(dim=-2, keepdim=True)
-y3 = (q @ S2) * v1_sum
-y4 = q @ (S1 * S2)
-out = y1 * g1 + y2 * g2 + y3 * g3 + y4 * g4
+```python {linenos=false}
+import torch
+
+def strassen_linear_attn(q, k1, v1, k2, v2, g1, g2, g3, g4, scale=None):
+    """
+    Strassen-style linearized mixing: structured combination of two memories.
+
+    Args:
+        q:     [B, H, N, D]    queries
+        k1:    [B, H, N, D]    first key projection
+        v1:    [B, H, N, D]    first value projection
+        k2:    [B, H, N, D]    second key projection
+        v2:    [B, H, N, D]    second value projection
+        g1-g4: [B, H, N, D]   learned gate tensors
+        scale: float           normalization scale
+
+    Returns:
+        y: [B, H, N, D]    output
+    """
+    if scale is None:
+        N = q.size(-2)
+        scale = N ** 05
+
+    S1 = (k1.mT / scale) @ (v1 / scale)      # [B, H, D, D]
+    S2 = (k2.mT / scale) @ (v2 / scale)      # [B, H, D, D]
+    v1_sum = v1.sum(dim=2, keepdim=True)      # [B, H, 1, D]
+    v2_sum = v2.sum(dim=2, keepdim=True)      # [B, H, 1, D]
+
+    y1 = (q @ S1) * v2_sum
+    y2 = (S1 * S2).sum(dim=-2, keepdim=True).expand_as(q)
+    y3 = (q @ S2) * v1_sum
+    y4 = q @ (S1 * S2)
+    return y1 * g1 + y2 * g2 + y3 * g3 + y4 * g4
 ```
 
 ---
@@ -284,16 +317,41 @@ $$Y_{nj}=\sum_{i,k,\ell=1}^D Q^1_{ni}S_{ijk\ell}Q^2_{nk}Q^3_{n\ell}.$$
 
 These preserve linear scaling in $N$ but increase polynomial cost in $D$. That makes them plausible only when $D$ is small and kernels are highly optimized. In my own experiments, stability and memory traffic become the main hurdles quickly, so I view these as “maybe useful for specific bottlenecked settings,” not a general recipe.
 
-Implementation sketch:
+```python {linenos=false}
+import torch
 
-```python
-# triple state
-state3 = torch.einsum('b h n i, b h n j, b h n k -> b h i j k', k1, v, k2)
-out3 = torch.einsum('b h n i, b h i j k, b h n k -> b h n j', q1, state3, q2)
+def triple_attn(q1, q2, k1, k2, v):
+    """
+    Triple attention: third-order feature-space memory, linear in N.
 
-# quad state
-state4 = torch.einsum('b h n i, b h n j, b h n k, b h n l -> b h i j k l', k1, v, k2, k3)
-out4 = torch.einsum('b h n i, b h i j k l, b h n k, b h n l -> b h n j', q1, state4, q2, q3)
+    Args:
+        q1: [B, H, N, D]    first query projection
+        q2: [B, H, N, D]    second query projection
+        k1: [B, H, N, D]    first key projection
+        k2: [B, H, N, D]    second key projection
+        v:  [B, H, N, D]    values
+
+    Returns:
+        y: [B, H, N, D]    output
+    """
+    state = torch.einsum('bhni,bhnj,bhnk->bhijk', k1, v, k2)   # [B, H, D, D, D]
+    return torch.einsum('bhni,bhijk,bhnk->bhnj', q1, state, q2)
+
+
+def quad_attn(q1, q2, q3, k1, k2, k3, v):
+    """
+    Quad attention: fourth-order feature-space memory, linear in N.
+
+    Args:
+        q1-q3: [B, H, N, D]    query projections
+        k1-k3: [B, H, N, D]    key projections
+        v:     [B, H, N, D]    values
+
+    Returns:
+        y: [B, H, N, D]    output
+    """
+    state = torch.einsum('bhni,bhnj,bhnk,bhnl->bhijkl', k1, v, k2, k3)  # [B, H, D, D, D, D]
+    return torch.einsum('bhni,bhijkl,bhnk,bhnl->bhnj', q1, state, q2, q3)
 ```
 
 ---
@@ -304,16 +362,28 @@ Low-rank methods like FLARE reduce cost by routing through an intermediate set o
 
 I like keeping this sanity check in mind: if a design’s efficiency comes purely from associativity, then without an additional mechanism (nonlinearity, gating, recurrence, or structured bottlenecks) it tends to inherit the same shared-memory limitations.
 
-FLARE gather-scatter implementation sketch:
+FLARE gather-scatter:
 
-```python
-q = self.latent_q.view(self.num_heads, self.num_latents, self.head_dim)  # [H, M, D]
-k = rearrange(self.k_proj(x), 'b n (h d) -> b h n d', h=self.num_heads)  # [B, H, N, D]
-v = rearrange(self.v_proj(x), 'b n (h d) -> b h n d', h=self.num_heads)
+```python {linenos=false}
+import torch.nn.functional as F
 
-q = q.unsqueeze(0).expand(k.size(0), -1, -1, -1)
-z = F.scaled_dot_product_attention(q, k, v, scale=self.attn_scale)
-y = F.scaled_dot_product_attention(k, q, z, scale=self.attn_scale)
+def flare_mixer(q, k, v, scale=1.0):
+    """
+    FLARE gather–scatter: low-rank global mixing via two SDPA calls.
+
+    Args:
+        q: [H, M, D]      latent queries (per head, shared across batch)
+        k: [B, H, N, D]   token keys
+        v: [B, H, N, D]   token values
+        scale: float      attention scale
+
+    Returns:
+        y: [B, H, N, D]   mixed token outputs
+    """
+    qb = q.unsqueeze(0)                                          # [1, H, M, D]
+    z  = F.scaled_dot_product_attention(qb, k, v, scale=scale)  # [B, H, M, D]
+    y  = F.scaled_dot_product_attention(k, qb, z, scale=scale)  # [B, H, N, D]
+    return y
 ```
 
 ---

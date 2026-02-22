@@ -119,6 +119,52 @@ Each latent maintains running online-softmax statistics across the token stream:
 
 This recurrent form is ideal for autoregressive decode — cached state is updated in $O(M)$ work per token. However, it is throughput-inefficient for training because the backward pass must store all prefix statistics naively. The next two algorithms address the prefill and training setting.
 
+```python {linenos=false}
+import torch
+import torch.nn.functional as F
+
+def causal_flare_decode_step(q, k_t, v_t, U, d, mu, scale=1.0):
+    """
+    Algorithm 1: single recurrent step for autoregressive decode.
+
+    Updates the cached latent state with the new token and reads the output.
+
+    Args:
+        q:   [H, M, D]     latent queries (learned, fixed across steps)
+        k_t: [B, H, D]     key for the current token
+        v_t: [B, H, D]     value for the current token
+        U:   [B, H, M, D]  running numerator accumulator (fp32)
+        d:   [B, H, M]     running denominator (fp32)
+        mu:  [B, H, M]     running prefix max (fp32)
+        scale: float       key-query scale factor (default 1.0)
+
+    Returns:
+        y_t: [B, H, D]     output for the current token
+        U:   [B, H, M, D]  updated numerator accumulator
+        d:   [B, H, M]     updated denominator
+        mu:  [B, H, M]     updated prefix max
+    """
+    # s_t[b, h, m] = scale * dot(q[h, m], k_t[b, h])
+    s_t = scale * torch.einsum('hmd,bhd->bhm', q, k_t.float())  # [B, H, M]
+
+    # Online-softmax update for each latent
+    mu_new  = torch.maximum(mu, s_t)                     # [B, H, M]
+    gamma   = torch.exp(mu - mu_new)                     # rescale old stats
+    eta     = torch.exp(s_t - mu_new)                    # weight for new token
+
+    d  = d * gamma + eta                                 # [B, H, M]
+    U  = U * gamma.unsqueeze(-1) + eta.unsqueeze(-1) * v_t.float().unsqueeze(2)  # [B, H, M, D]
+    mu = mu_new
+
+    Z_t = U / (d.unsqueeze(-1) + 1e-6)                  # [B, H, M, D]
+
+    # Scatter: token reads from updated latents via softmax over M
+    alpha_t = F.softmax(s_t, dim=-1)                     # [B, H, M]
+    y_t = torch.einsum('bhm,bhmd->bhd', alpha_t, Z_t)   # [B, H, D]
+
+    return y_t.to(v_t.dtype), U, d, mu
+```
+
 ---
 
 ## Algorithm 2: dense causal FLARE (prefill-oriented)
@@ -198,6 +244,66 @@ This keeps the prefill path numerically stable while preserving dense-kernel str
    - $W \leftarrow W \odot M_{\mathrm{causal}}$
 4. Output:
    - $Y \leftarrow WV$.
+
+```python {linenos=false}
+import torch
+import torch.nn.functional as F
+
+def causal_flare_prefill(q, k, v, scale=1.0):
+    """
+    Algorithm 3: stable dense causal FLARE for training and prefill.
+
+    Computes the full causal output in parallel using online-softmax prefix
+    statistics to avoid numerical overflow in mixed precision.
+
+    Args:
+        q: [H, M, D]     latent queries (learned, shared across batch)
+        k: [B, H, T, D]  token keys
+        v: [B, H, T, D]  token values
+        scale: float     key-query scale factor (default 1.0)
+
+    Returns:
+        Y: [B, H, T, D]  token outputs
+    """
+    B, H, T, D = k.shape
+    M = q.shape[1]
+
+    # S[b, h, t, m] = scale * dot(k[b, h, t], q[h, m])
+    S = scale * torch.einsum('bhtd,hmd->bhtm', k.float(), q.float())  # [B, H, T, M]
+
+    # P[b, h, t, m] = softmax over M (scatter weights for token t)
+    P = F.softmax(S, dim=-1)                                           # [B, H, T, M]
+
+    # Stable prefix statistics: running max R and normalized prefix sum L
+    R = torch.full((B, H, 1, M), float('-inf'), dtype=torch.float32, device=k.device)
+    L = torch.zeros(B, H, 1, M, dtype=torch.float32, device=k.device)
+
+    R_all = torch.zeros(B, H, T, M, dtype=torch.float32, device=k.device)
+    L_all = torch.zeros(B, H, T, M, dtype=torch.float32, device=k.device)
+
+    for t in range(T):
+        s_t = S[:, :, t:t+1, :]                         # [B, H, 1, M]
+        R_new = torch.maximum(R, s_t)
+        L = L * torch.exp(R - R_new) + torch.exp(s_t - R_new)
+        R = R_new
+        R_all[:, :, t:t+1, :] = R
+        L_all[:, :, t:t+1, :] = L
+
+    # C[b, h, t, m] = P[t, m] / (L[t, m] + eps)  — gather weight for latent m at step t
+    C = P / (L_all + 1e-6)                                             # [B, H, T, M]
+
+    # W[b, h, t, tau] = sum_m C[t, m] * exp(S[tau, m] - R[t, m])
+    # exp(S[tau, m] - R[t, m]): [B, H, T, M] x [B, H, T, M] -> broadcast over tau
+    exp_S = torch.exp(S.unsqueeze(2) - R_all.unsqueeze(3))            # [B, H, T, T, M]
+    W = torch.einsum('bhtm,bhtsm->bhts', C, exp_S)                    # [B, H, T, T]
+
+    # Apply causal mask (token t may only attend to tau <= t)
+    causal_mask = torch.tril(torch.ones(T, T, device=k.device, dtype=torch.bool))
+    W = W.masked_fill(~causal_mask, 0.0)
+
+    Y = torch.einsum('bhts,bhsd->bhtd', W, v.float())                 # [B, H, T, D]
+    return Y.to(v.dtype)
+```
 
 ---
 
