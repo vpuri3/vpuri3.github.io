@@ -9,7 +9,7 @@ TocOpen = true
 math = true
 +++
 
-> **Running notes** — last updated 2026-02-22. This is a living document, not a polished article; I update it frequently as my understanding develops.
+> **Running notes** — last updated 2026-03-02. This is a living document, not a polished article; I update it frequently as my understanding develops.
 
 ## Motivation
 
@@ -98,6 +98,17 @@ $$
 
 So each step produces an updated latent set $Z_t = [z_1^t,\ldots,z_M^t]$, then token $t$ reads from it.
 
+**Contrast with linear attention.** Unnormalized linear attention accumulates $S_t = \sum_{\tau \le t} k_\tau v_\tau^\top$ without per-token normalization, forcing all queries to interact with the same global summary statistic. FLARE normalizes independently per latent, preserving query-specific weighting.
+
+---
+
+## Contributions
+
+- **Causal FLARE formulation.** Prefix-softmax normalization over $M$ latent queries admits an exact $\mathcal{O}(M)$-memory recurrent state via the online-softmax algorithm, with no forgetting and no approximation.
+- **Chunkwise forward algorithm.** A three-phase algorithm (chunk statistics → prefix scan → per-chunk recurrent decode) exposes parallelism across chunks while producing exactly the same outputs as the fully sequential pass.
+- **Triton GPU kernels.** Fused prefill (chunkwise) and decode (recurrent) kernels in Triton eliminate PyTorch autograd overhead and enable constant-time token generation with $\mathcal{O}(M)$ state.
+- **Empirical validation at 340M scale.** Trained on 10B tokens of FineWeb, FLARE-LM matches GLA in training loss and downstream benchmarks (MMLU, CommonsenseQA, LongBench) while decode latency and memory remain constant with context length.
+
 ---
 
 ## Algorithm 1: streaming recurrent causal FLARE (decode-friendly)
@@ -170,187 +181,93 @@ def causal_flare_decode_step(q, k_t, v_t, U, d, mu, scale=1.0):
 
 ---
 
-## Algorithm 2: dense causal FLARE
+## Why not a dense algorithm?
 
-Define scores:
+A natural question is whether causal FLARE admits a dense, matmul-friendly formulation that avoids the token loop entirely. Writing $S_{m\tau} = s\,q_m^\top k_\tau$ and $A_{m\tau} = \exp(S_{m\tau})$, the output can be expressed as
 
 $$
-S_{t,m} = s\,k_t^\top q_m,
+y_t = \sum_{\tau \le t} W_{t\tau}\, v_\tau,
 \qquad
-A_{t,m} = \exp(S_{t,m}),
-\qquad
-P_{t,m} = \mathrm{softmax}_m(S_{t,:}).
+W_{t\tau} = \sum_{m=1}^M \frac{P_{mt}}{D_{mt}} A_{m\tau},
 $$
 
-Prefix denominator per latent:
+where $P_{mt} = \mathrm{softmax}_m(S_{\cdot t})$ are the decode probabilities and $D_{mt} = \sum_{u \le t} A_{mu}$ is the prefix denominator. The full mixing matrix $W \in \mathbb{R}^{T \times T}$ can be written as $W = (P \oslash D)^\top \cdot A$, followed by a causal mask and matmul with $V$. This is a clean dense formulation.
+
+The problem is numerical stability. Computing $D_{mt}$ requires the running prefix maximum
 
 $$
-D_{t,m} = \sum_{u \le t} A_{u,m}.
+R_{mt} = \max_{\tau \le t} S_{m\tau}
 $$
 
-Then
+for safe exponentiation. This maximum depends on the causal ordering and cannot be computed in a single parallel pass over $t$: a numerically stable version requires a sequential scan over $t$ to accumulate $R_{mt}$, which reintroduces a token loop and negates the benefit of the dense formulation.
 
-$$
-C_{t,m} = \frac{P_{t,m}}{D_{t,m}+\varepsilon},
-\qquad
-W = C A^\top,
-\qquad
-Y = (W \odot M_{\mathrm{causal}})V.
-$$
-
-Writing the token output explicitly by substituting $C_{t,m} = P_{t,m}/D_{t,m}$ and expanding $W_{t,\tau} = \sum_m C_{t,m} A_{\tau,m}$:
-
-$$
-y_t
-= \sum_{\tau \le t}
-\left(\,\sum_{m=1}^M
-\frac{P_{t,m}}{\displaystyle\sum_{u \le t}\exp(S_{u,m})}
-\,\exp(S_{\tau,m})\right) v_\tau.
-$$
-
-$P_{t,m} = \mathrm{softmax}_m(S_{t,:})$ can be precomputed cheaply since softmax is over the small dimension $M$. The hard part is the factor
-
-$$
-\frac{\exp(S_{\tau,m})}{\displaystyle\sum_{u \le t}\exp(S_{u,m})},
-$$
-
-which carries three independent indices: the query token $t$, the latent $m$, and the key token $\tau$. Materialising the full weight tensor $W$ inside a kernel requires holding the $[C, M, C]$ intermediate in registers — a third-order object that blows up register pressure and degrades occupancy even for moderate chunk sizes.
-
-### Chunkwise training context
-
-To set context, consider **chunkwise causal linear attention** — the structure that causal FLARE training mirrors. For causal linear attention, the state $S_t = \sum_{\tau \le t} k_\tau v_\tau^\top$ in chunk $c$ decomposes as
-
-$$
-S_t = \underbrace{\sum_{\tau < cC} k_\tau v_\tau^\top}_{S_{\text{prefix}}}
-    + \underbrace{\sum_{\substack{\tau \ge cC \\ \tau \le t}} k_\tau v_\tau^\top}_{S_{\text{intra}}},
-$$
-
-giving $y_t = q_t^\top(S_{\text{prefix}} + S_{\text{intra}})$. The prefix state propagates between chunks via a running cumulative sum; within each chunk the intra term forms a $C \times C$ lower-triangular matrix. This three-phase structure — chunk-wise $K^\top V$, prefix cumsum, fused inter+intra-chunk pass — is exactly what [`lra/models/triton/causal_linear.py`](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/causal_linear.py) implements.
-
-For causal FLARE, Algorithm 2 is the analogous dense form with $W_{\text{intra}} = CA^\top$ giving a $C \times C$ interaction matrix. Conceptually this is the right structure. In practice, two problems prevent using it directly.
-
-**Problem 1 — register pressure.** Computing $W_{t,\tau}$ requires $\exp(S_{\tau,m})$ live for all $(\tau, m)$ simultaneously. Inside a Triton kernel this lives in registers; the $[C, M]$ tile inflates pressure and drops occupancy for any non-trivial $C$ and $M$.
-
-**Problem 2 — stability.** A natural attempt is to subtract the per-token max $\mu_t = \max_m S_{t,m}$ before computing $P_{t,m}$. This stabilises the softmax over $M$ — but not the causal prefix sum. The denominator $\sum_{u \le t} \exp(S_{u,m})$ still involves raw exponentials over the token dimension $t$, which can overflow even after $\mu_t$ is removed.
-
-### Why Algorithm 3 does not rescue Algorithm 2
-
-Algorithm 3 fixes the stability problem by computing the running prefix max
-
-$$
-R_{t,m} = \max_{\tau \le t}\, S_{\tau,m}
-$$
-
-via a sequential token loop, so every exponential becomes $\exp(S - R_{t,m}) \in (0,1]$. But that sequential token loop must complete before the dense matmul — and its cost is already comparable to running Algorithm 1 outright.
-
-If a token-sequential pass is unavoidable, **Algorithm 1 is the simpler and faster choice**: it fuses the running-max update, denominator accumulation, and numerator accumulation into a single pass with $O(MD)$ state per step and no register-pressure problem. For the small chunk sizes used in practice ($C \approx 32$–$128$), Algorithm 1's token loop fits comfortably in registers and achieves high occupancy. There is no benefit to first running a prefix-statistics loop and then materialising a dense $C \times C$ kernel.
+The chunkwise algorithm below is the practical resolution: it amortizes the sequential dependency to a scan over *chunks* rather than individual tokens, exposing the parallelism that makes GPU kernels efficient.
 
 ---
 
-## Algorithm 3: stable dense causal FLARE
+## Chunkwise forward algorithm (training / prefill)
 
-Use online-softmax style prefix statistics for each latent:
+The recurrent algorithm is ideal for decode but throughput-limited for training: the backward pass must store all prefix statistics for all $T$ steps. The practical resolution is to amortize the sequential dependency to a scan over *chunks* rather than individual tokens.
 
-- $R_{t,m}$: running prefix max of $S_{t,m}$
-- $L_{t,m}$: stable prefix sum in normalized frame
+Fix a chunk length $C$ and define $N = T/C$ chunks with index sets $I_c = \{(c-1)C+1,\ldots,cC\}$.
 
+**Phase 1 — chunk-local statistics (parallel over chunks).** For each chunk $c$, compute independently:
 $$
-R_{t,m} = \max(R_{t-1,m}, S_{t,m}),
+\mu^{(c)} = \max_{t \in I_c}(s\,Qk_t^\top), \quad
+d^{(c)} = \sum_{t \in I_c} \exp(s\,Qk_t^\top - \mu^{(c)}), \quad
+U^{(c)} = \sum_{t \in I_c} \exp(s\,Qk_t^\top - \mu^{(c)})\,v_t^\top.
 $$
+This is fully parallel over $N$ chunks.
 
+**Phase 2 — prefix scan over chunks (sequential over $N$ chunks).** Combine chunk summaries with online-softmax merging:
 $$
-L_{t,m} = L_{t-1,m}\exp(R_{t-1,m}-R_{t,m}) + \exp(S_{t,m}-R_{t,m}).
+\tilde\mu^{(c)} = \max(\tilde\mu^{(c-1)}, \mu^{(c)}), \quad
+\gamma^{(c)} = \exp(\tilde\mu^{(c-1)} - \tilde\mu^{(c)}), \quad
+\eta^{(c)} = \exp(\mu^{(c)} - \tilde\mu^{(c)}),
 $$
-
-Then
-
 $$
-C_{t,m} = \frac{P_{t,m}}{L_{t,m}+\varepsilon},
-\qquad
-W_{t,\tau} = \sum_{m=1}^M C_{t,m}\exp(S_{\tau,m}-R_{t,m}),
+\tilde{d}^{(c)} = \tilde{d}^{(c-1)} \odot \gamma^{(c)} + d^{(c)} \odot \eta^{(c)}, \quad
+\tilde{U}^{(c)} = \tilde{U}^{(c-1)} \odot \gamma^{(c)} + U^{(c)} \odot \eta^{(c)}.
 $$
+The *exclusive* prefix state for chunk $c$ is $(\tilde\mu^{(c-1)}, \tilde{d}^{(c-1)}, \tilde{U}^{(c-1)})$.
 
-$$
-W \leftarrow W \odot M_{\mathrm{causal}},
-\qquad
-Y = WV.
-$$
+**Phase 3 — recurrent decode within each chunk (parallel over chunks).** Initialize each chunk's recurrent pass at its exclusive prefix state and run Algorithm 1 over the $C$ tokens of that chunk. Since the prefix scan has already accounted for all earlier tokens, each chunk produces the same outputs as a fully sequential pass — and all chunks run in parallel.
 
-This keeps the prefill path numerically stable while preserving dense-kernel structure.
+The sequential work is now $\mathcal{O}(N) = \mathcal{O}(T/C)$ rather than $\mathcal{O}(T)$. For $C = 64$ this is a $64\times$ reduction in the sequential bottleneck, and $N$ is small enough that the Phase 2 scan is negligible on modern GPUs.
 
-1. Compute score and latent decode probabilities:
-   - $S \leftarrow s(KQ^\top)$, so $S_{t,m}=s\,k_t^\top q_m$
-   - $P \leftarrow \mathrm{softmax}_m(S)$
-2. Compute stable prefix statistics for each latent:
-   - Initialize $R_{0,m}\leftarrow -\infty,\;L_{0,m}\leftarrow 0$
-   - For $t=1,\ldots,T$:
-     - $R_{t,m}\leftarrow \max(R_{t-1,m}, S_{t,m})$
-     - $L_{t,m}\leftarrow L_{t-1,m}\exp(R_{t-1,m}-R_{t,m})+\exp(S_{t,m}-R_{t,m})$
-3. Build dense causal mixer:
-   - $C_{t,m}\leftarrow \dfrac{P_{t,m}}{L_{t,m}+\varepsilon}$
-   - $W_{t,\tau}\leftarrow \sum_{m=1}^M C_{t,m}\exp(S_{\tau,m}-R_{t,m})$
-   - $W \leftarrow W \odot M_{\mathrm{causal}}$
-4. Output:
-   - $Y \leftarrow WV$.
+```
+Algorithm 2: Chunkwise FLARE Forward Pass (training / prefill)
 
-```python {linenos=false}
-import torch
-import torch.nn.functional as F
+Input:  Q ∈ R^{M×D}, keys {k_t}, values {v_t} for t=1..T,
+        scale s, chunk length C  (assume T = NC)
+Output: {y_t} for t=1..T
 
-def causal_flare_prefill(q, k, v, scale=1.0):
-    """
-    Algorithm 3: stable dense causal FLARE for training and prefill.
+Define chunk index sets I_c = {(c-1)C+1, ..., cC} for c = 1..N
 
-    Computes the full causal output in parallel using online-softmax prefix
-    statistics to avoid numerical overflow in mixed precision.
+── Phase 1: chunk-local statistics (parallel over all chunks) ──────────
+for each chunk c in parallel:
+    μ^(c)  ← max_{t ∈ I_c}  s·Q k_t^T          ∈ R^M
+    d^(c)  ← Σ_{t ∈ I_c}   exp(s·Qk_t^T − μ^(c))     ∈ R^M
+    U^(c)  ← Σ_{t ∈ I_c}   exp(s·Qk_t^T − μ^(c)) · v_t^T  ∈ R^{M×D}
 
-    Args:
-        q: [H, M, D]     latent queries (learned, shared across batch)
-        k: [B, H, T, D]  token keys
-        v: [B, H, T, D]  token values
-        scale: float     key-query scale factor (default 1.0)
+── Phase 2: prefix scan over chunks (sequential over c = 1..N) ─────────
+init: μ̃^(0) ← −∞,  d̃^(0) ← 0,  Ũ^(0) ← 0
+for c = 1..N:
+    μ̃^(c) ← max(μ̃^(c−1), μ^(c))
+    γ^(c)  ← exp(μ̃^(c−1) − μ̃^(c))
+    η^(c)  ← exp(μ^(c)    − μ̃^(c))
+    d̃^(c) ← d̃^(c−1) ⊙ γ^(c) + d^(c) ⊙ η^(c)
+    Ũ^(c) ← Ũ^(c−1) ⊙ γ^(c) + U^(c) ⊙ η^(c)
 
-    Returns:
-        Y: [B, H, T, D]  token outputs
-    """
-    B, H, T, D = k.shape
-    M = q.shape[1]
+exclusive prefix init for chunk c:
+    (μ_0^(c), d_0^(c), U_0^(c)) ← (μ̃^(c−1), d̃^(c−1), Ũ^(c−1))
 
-    # S[b, h, t, m] = scale * dot(k[b, h, t], q[h, m])
-    S = scale * torch.einsum('bhtd,hmd->bhtm', k.float(), q.float())  # [B, H, T, M]
+── Phase 3: recurrent decode within each chunk (parallel over all chunks)
+for each chunk c in parallel:
+    run Algorithm 1 on {k_t, v_t}_{t ∈ I_c}
+    initialized at (μ_0^(c), d_0^(c), U_0^(c))
 
-    # P[b, h, t, m] = softmax over M (scatter weights for token t)
-    P = F.softmax(S, dim=-1)                                           # [B, H, T, M]
-
-    # Stable prefix statistics: running max R and normalized prefix sum L
-    R = torch.full((B, H, 1, M), float('-inf'), dtype=torch.float32, device=k.device)
-    L = torch.zeros(B, H, 1, M, dtype=torch.float32, device=k.device)
-
-    R_all = torch.zeros(B, H, T, M, dtype=torch.float32, device=k.device)
-    L_all = torch.zeros(B, H, T, M, dtype=torch.float32, device=k.device)
-
-    for t in range(T):
-        s_t = S[:, :, t:t+1, :]                         # [B, H, 1, M]
-        R_new = torch.maximum(R, s_t)
-        L = L * torch.exp(R - R_new) + torch.exp(s_t - R_new)
-        R = R_new
-        R_all[:, :, t:t+1, :] = R
-        L_all[:, :, t:t+1, :] = L
-
-    # C[b, h, t, m] = P[t, m] / (L[t, m] + eps)  — gather weight for latent m at step t
-    C = P / (L_all + 1e-6)                                             # [B, H, T, M]
-
-    # W[b, h, t, tau] = sum_m C[t, m] * exp(S[tau, m] - R[t, m])
-    # exp(S[tau, m] - R[t, m]): [B, H, T, M] x [B, H, T, M] -> broadcast over tau
-    exp_S = torch.exp(S.unsqueeze(2) - R_all.unsqueeze(3))            # [B, H, T, T, M]
-    W = torch.einsum('bhtm,bhtsm->bhts', C, exp_S)                    # [B, H, T, T]
-
-    # Apply causal mask (token t may only attend to tau <= t)
-    causal_mask = torch.tril(torch.ones(T, T, device=k.device, dtype=torch.bool))
-    W = W.masked_fill(~causal_mask, 0.0)
-
-    Y = torch.einsum('bhts,bhsd->bhtd', W, v.float())                 # [B, H, T, D]
-    return Y.to(v.dtype)
+return {y_t}
 ```
 
 ---
@@ -359,11 +276,40 @@ def causal_flare_prefill(q, k, v, scale=1.0):
 
 Causal FLARE supports three operational regimes, each with different priorities.
 
-**Teacher-forced training** is throughput-oriented and uses chunkwise processing. Algorithm 1 is the inner hot-loop kernel for each chunk ($C \approx 32$–$128$): its recurrent token pass fits in registers and achieves high occupancy. The inter-chunk prefix denominator $D_{\text{prefix},m}$ is accumulated between chunks via a running sum. Algorithm 3 is the right choice when a larger-chunk or full-sequence dense kernel is preferred and the sequential prefix-statistics pass is acceptable.
+**Training** is throughput-oriented and uses chunkwise processing. Algorithm 1 is the inner hot-loop kernel for each chunk ($C \approx 32$–$128$): its recurrent token pass fits in registers and achieves high occupancy. The inter-chunk prefix denominator $D_{\text{prefix},m}$ is accumulated between chunks via a running sum. Algorithm 3 is the right choice when a larger-chunk or full-sequence dense kernel is preferred and the sequential prefix-statistics pass is acceptable.
 
 **Inference prefill** is algorithmically identical to training but with a different blocking profile. Prefill is latency-sensitive and may benefit from different tile sizes and more aggressive kernel fusion than the training path.
 
 **Autoregressive decode** is latency-critical and processes one token at a time. Algorithm 1 is ideal: update the cached latent state with each new $(k_t, v_t)$, then read $y_t$ from the updated latents. No attention matrix is ever constructed, and the state size $M$ is the only memory overhead beyond the KV cache.
+
+---
+
+## Results
+
+All models have ~340M parameters (24 blocks, hidden dim 1024, 16 heads) and are trained on 10B tokens of [FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) with sequence length 2048.
+
+### Training loss
+
+![Training loss curves for ~340M models on FineWeb](/assets/blog/flare-lm-post/train_loss_340M.png)
+
+FLARE (16 latents, red) closely tracks Transformer++ throughout training and is competitive with GLA, while unmodified Linear Attention converges to a noticeably higher loss. This confirms that prefix normalization — without any forgetting — is a strong inductive bias: routing through only $M=16$ latent queries per head largely recovers the expressive power of full softmax attention.
+
+### Downstream benchmarks
+
+| Model | Params | Train loss↓ | MMLU↑ | CSR↑ | Lambada↑ | Wiki PPL↓ | LongBench↑ |
+|---|---|---|---|---|---|---|---|
+| Linear Attention | 316M | 11.38 | 0.256 | 0.447 | 0.195 | 48.04 | N/A |
+| GLA | 342M | 10.23 | 0.267 | 0.470 | 0.312 | 31.85 | 0.082 |
+| Transformer++ | 341M | 9.93 | 0.253 | 0.473 | 0.347 | 28.06 | 0.078 |
+| **FLARE-LM** ($M=16$) | 316M | 10.50 | 0.244 | 0.466 | 0.243 | 35.04 | 0.064 |
+
+FLARE is competitive with GLA across MMLU and CommonsenseQA; both sublinear-memory methods trail Transformer++ modestly on perplexity and Lambada.
+
+### Prefill and decode throughput
+
+![Prefill and decode latency and peak memory for the 340M model](/assets/blog/flare-lm-post/prefill_decode_340M.png)
+
+For prefill (top row), FLARE's chunkwise kernel achieves substantially lower latency and peak memory than Transformer, whose quadratic attention dominates at long sequences. Decode (bottom row) is the clearer differentiator: Transformer latency and memory grow linearly with prompt length due to the KV-cache, while FLARE's recurrent state is fixed at $\mathcal{O}(MD)$ regardless. At 100k tokens, FLARE ($M=32$) uses roughly $10\times$ less decode memory than Transformer, with flat latency across all prompt lengths.
 
 ---
 
@@ -390,6 +336,21 @@ A few implementation details matter disproportionately.
 
 ---
 
+## Future directions
+
+**Scaling to 1.3B / 100B tokens.** The 340M / 10B run establishes a proof of concept. The standard evaluation configuration for SSM and linear attention baselines (Mamba, GLA, RetNet) is 1.3B parameters trained on 100B tokens — the setting needed to make direct comparisons. A secondary question is how the optimal $M$ scales with model size.
+
+**Long-context training.** Current training uses sequences of length 2048. The memory advantage of FLARE only fully materializes at longer contexts, motivating training at 8k–32k tokens. The key enabler is a FlashAttention-2-style fused backward kernel: saving only the per-token log-normalizer $\ell_t \in \mathbb{R}^M$ and recomputing $Z_t$ on the fly reduces activation memory from $\mathcal{O}(MT)$ to $\mathcal{O}(M)$, making long-sequence training feasible without gradient checkpointing overhead. With long-context pretraining in place, evaluation targets include RULER, SCROLLS, and $\infty$Bench.
+
+**Architecture exploration.** Three axes:
+- *Forgetting gates.* A per-latent decay $\lambda_m \in (0,1]$ interpolates between full-prefix memory and aggressive forgetting, connecting FLARE-LM to Mamba and GLA while retaining prefix normalization.
+- *Hybrid models.* Alternating FLARE layers with sliding-window local attention handles both global context (FLARE, $\mathcal{O}(NM)$) and fine-grained local dependencies.
+- *Content-aware latent queries.* Making $Q$ prefix-dependent enables dynamic routing, potentially improving expressivity on code and mathematics.
+
+**Inference-time deployment.** At 100k+ tokens, FLARE's fixed $\mathcal{O}(M \times D)$ state is the main differentiator against quantized KV-cache and sliding-window baselines. The recurrent state $(\mu_t, d_t, U_t)$ also enables prompt caching: serialize the prefix state once, reuse across requests in multi-turn and agent settings.
+
+---
+
 ## References
 
 1. Puri, V. et al. *FLARE: Fast Low-rank Attention Routing Engine*. arXiv (2025). [https://arxiv.org/abs/2508.12594](https://arxiv.org/abs/2508.12594)
@@ -397,3 +358,7 @@ A few implementation details matter disproportionately.
 3. Dao, T. et al. *FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness*. NeurIPS (2022). [https://arxiv.org/abs/2205.14135](https://arxiv.org/abs/2205.14135)
 4. Qin, Z. et al. *The Devil in Linear Transformer*. arXiv (2022). [https://arxiv.org/abs/2210.10340](https://arxiv.org/abs/2210.10340)
 5. FLARE.py. `lra/models/triton/causal_linear.py`. [https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/causal_linear.py](https://github.com/vpuri3/FLARE.py/blob/master/lra/models/triton/causal_linear.py)
+6. Gu, A. and Dao, T. *Mamba: Linear-Time Sequence Modeling with Selective State Spaces*. arXiv (2023). [https://arxiv.org/abs/2312.00752](https://arxiv.org/abs/2312.00752)
+7. Yang, S. et al. *Gated Linear Attention Transformers with Hardware-Efficient Training*. arXiv (2024). [https://arxiv.org/abs/2312.06635](https://arxiv.org/abs/2312.06635)
+8. Penedo, G. et al. *The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale*. NeurIPS (2024). [https://huggingface.co/datasets/HuggingFaceFW/fineweb](https://huggingface.co/datasets/HuggingFaceFW/fineweb)
+9. Hsieh, C.-P. et al. *RULER: What's the Real Context Window Size of Your Long-Context Language Models?* arXiv (2024). [https://arxiv.org/abs/2404.06654](https://arxiv.org/abs/2404.06654)
