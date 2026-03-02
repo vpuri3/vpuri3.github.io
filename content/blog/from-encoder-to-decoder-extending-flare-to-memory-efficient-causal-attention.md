@@ -62,6 +62,10 @@ $$
 
 where $M_{\mathrm{causal}}$ masks the strict upper triangle.
 
+Standard decoder attention therefore carries a **variable-size state** at inference time: the effective memory grows with the prefix because the model must retain the full KV cache for all prior tokens.
+
+![Standard Transformer decoder attention keeps a variable-size KV state that grows with context length](/assets/blog/flare-lm-post/decoder.gif)
+
 ---
 
 ## Warm-up: causal linear attention as a state update
@@ -100,13 +104,17 @@ So each step produces an updated latent set $Z_t = [z_1^t,\ldots,z_M^t]$, then t
 
 **Contrast with linear attention.** Unnormalized linear attention accumulates $S_t = \sum_{\tau \le t} k_\tau v_\tau^\top$ without per-token normalization, forcing all queries to interact with the same global summary statistic. FLARE normalizes independently per latent, preserving query-specific weighting.
 
+The key distinction from standard attention is the state shape: causal FLARE compresses the entire prefix into a **fixed-size recurrent latent state** $(\mu_t, d_t, U_t)$ with size $\mathcal{O}(M)$ per head, rather than a KV cache that grows with sequence length.
+
+![FLARE-LM compresses the prefix into a fixed-size latent state updated by a prefix-scan-friendly recurrence](/assets/blog/flare-lm-post/flare_decoder.gif)
+
 ---
 
 ## Contributions
 
-- **Causal FLARE formulation.** Prefix-softmax normalization over $M$ latent queries admits an exact $\mathcal{O}(M)$-memory recurrent state via the online-softmax algorithm, with no forgetting and no approximation.
-- **Chunkwise forward algorithm.** A three-phase algorithm (chunk statistics → prefix scan → per-chunk recurrent decode) exposes parallelism across chunks while producing exactly the same outputs as the fully sequential pass.
-- **Triton GPU kernels.** Fused prefill (chunkwise) and decode (recurrent) kernels in Triton eliminate PyTorch autograd overhead and enable constant-time token generation with $\mathcal{O}(M)$ state.
+- **Causal FLARE formulation.** Prefix-softmax normalization over $M$ latent queries admits an exact fixed-size recurrent state via the online-softmax algorithm: $\mathcal{O}(M)$ memory per head, no forgetting, and no approximation.
+- **Fixed-size state via prefix scan.** Unlike standard causal attention, whose inference state grows with the prefix length through the KV cache, FLARE exposes a three-phase algorithm (chunk statistics → prefix scan → per-chunk recurrent decode) that preserves exactness while keeping the cached state size independent of context length.
+- **Triton GPU kernels.** Fused Triton kernels for chunkwise prefill and recurrent decode eliminate PyTorch autograd overhead, minimize memory traffic, and deliver constant-time token generation with the fixed latent state.
 - **Empirical validation at 340M scale.** Trained on 10B tokens of FineWeb, FLARE-LM matches GLA in training loss and downstream benchmarks (MMLU, CommonsenseQA, LongBench) while decode latency and memory remain constant with context length.
 
 ---
