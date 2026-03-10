@@ -51,7 +51,7 @@
 
   function resetProgress() {
     setProgress("upload", 0, "Waiting to upload.");
-    setProgress("model", 0, "Waiting for upload.");
+    setProgress("model", 0, "Waiting for browser upload to finish.");
   }
 
   function formatBytes(bytes) {
@@ -323,7 +323,7 @@
       });
 
       setStatus(`Uploading ${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} to backend...`);
-      setProgress("model", 0, "Waiting for upload.");
+      setProgress("model", 0, "Waiting for browser upload to finish.");
       const createdJob = await createJobWithUploadProgress(backendUrl, form);
       activeJobId = createdJob.job_id;
 

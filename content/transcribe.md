@@ -115,7 +115,7 @@ description = "Upload audio files, run Sarvam batch transcription in the browser
       <div class="transcribe-progress-bar" aria-hidden="true">
         <div id="model-progress-fill" class="transcribe-progress-fill"></div>
       </div>
-      <div id="model-progress-text" class="transcribe-progress-copy">Waiting for upload.</div>
+      <div id="model-progress-text" class="transcribe-progress-copy">Waiting for browser upload to finish.</div>
     </div>
   </div>
 
