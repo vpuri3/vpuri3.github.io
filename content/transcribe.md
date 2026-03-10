@@ -129,5 +129,5 @@ description = "Upload audio files, run Sarvam batch transcription in the browser
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
-<script src="/assets/transcribe-tool.js?v=20260310-2" defer></script>
+<script src="/assets/transcribe-tool.js?v=20260310-3" defer></script>
 {{< /rawhtml >}}
