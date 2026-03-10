@@ -31,6 +31,7 @@
   let latestZipBlob = null;
   let busy = false;
   let activeJobId = null;
+  let stopPolling = false;
 
   function setStatus(message) {
     els.status.textContent = message;
@@ -191,10 +192,28 @@
     return entries;
   }
 
-  function createJobWithUploadProgress(backendUrl, formData) {
+  async function initJob(backendUrl, formData) {
+    const response = await fetch(`${backendUrl}/transcribe/jobs/init`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      let detail = `${response.status} ${response.statusText}`;
+      try {
+        const payload = await response.json();
+        detail = payload.detail || detail;
+      } catch (_err) {
+        // ignore
+      }
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  function uploadFilesToJobWithProgress(backendUrl, jobId, formData) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${backendUrl}/transcribe/jobs`);
+      xhr.open("POST", `${backendUrl}/transcribe/jobs/${jobId}/files`);
       xhr.responseType = "json";
 
       xhr.upload.addEventListener("progress", (event) => {
@@ -233,8 +252,11 @@
     });
   }
 
-  async function pollJobUntilComplete(backendUrl, jobId) {
+  async function pollJobUntilComplete(backendUrl, jobId, shouldStop) {
     while (true) {
+      if (shouldStop && shouldStop()) {
+        return null;
+      }
       const response = await fetch(`${backendUrl}/transcribe/jobs/${jobId}`);
       if (!response.ok) {
         let detail = `${response.status} ${response.statusText}`;
@@ -300,6 +322,7 @@
 
     busy = true;
     activeJobId = null;
+    stopPolling = false;
     latestResults = [];
     latestZipBlob = null;
     renderResults();
@@ -308,35 +331,40 @@
     els.downloadZip.disabled = true;
 
     try {
-      const form = new FormData();
+      const initForm = new FormData();
       if ((els.apiKey.value || "").trim()) {
-        form.append("api_key", els.apiKey.value.trim());
+        initForm.append("api_key", els.apiKey.value.trim());
       }
-      form.append("mode", els.mode.value);
-      form.append("language_code", (els.languageCode.value || "unknown").trim() || "unknown");
+      initForm.append("mode", els.mode.value);
+      initForm.append("language_code", (els.languageCode.value || "unknown").trim() || "unknown");
       const speakerCount = Number.parseInt(els.speakerCount.value, 10);
       if (Number.isFinite(speakerCount) && speakerCount > 0) {
-        form.append("num_speakers", String(speakerCount));
+        initForm.append("num_speakers", String(speakerCount));
       }
+      const uploadForm = new FormData();
       selectedFiles.forEach((file) => {
-        form.append("files", file, file.name);
+        uploadForm.append("files", file, file.name);
       });
 
-      setStatus(`Uploading ${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} to backend...`);
+      setStatus("Creating backend job...");
       setProgress("model", 0, "Waiting for browser upload to finish.");
-      const createdJob = await createJobWithUploadProgress(backendUrl, form);
+      const createdJob = await initJob(backendUrl, initForm);
       activeJobId = createdJob.job_id;
+      const pollPromise = pollJobUntilComplete(backendUrl, activeJobId, () => stopPolling);
 
       setProgress("model", createdJob.progress || 5, createdJob.message || "Preparing Sarvam batch job.");
       setStatus(createdJob.message || "Preparing Sarvam batch job.");
+      setStatus(`Uploading ${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} to backend...`);
 
-      await pollJobUntilComplete(backendUrl, activeJobId);
+      await uploadFilesToJobWithProgress(backendUrl, activeJobId, uploadForm);
+      await pollPromise;
       latestZipBlob = await downloadCompletedZip(backendUrl, activeJobId);
       latestResults = await parseZipResults(latestZipBlob);
       setProgress("model", 100, "Sarvam job complete.");
       renderResults();
       setStatus(`Completed. ${latestResults.length} transcript${latestResults.length === 1 ? "" : "s"} ready.`);
     } catch (error) {
+      stopPolling = true;
       setStatus(`Transcription failed: ${error.message || error}`);
       setProgress("model", 100, `Failed${activeJobId ? ` for job ${activeJobId}.` : "."}`);
     } finally {
