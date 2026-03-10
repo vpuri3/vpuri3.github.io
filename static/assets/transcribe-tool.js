@@ -1,7 +1,8 @@
 (function () {
+  const BACKEND_URL = "https://sarvam-transcription-api.onrender.com";
+
   const els = {
     apiKey: document.getElementById("sarvam-api-key"),
-    backendUrl: document.getElementById("backend-url"),
     mode: document.getElementById("transcribe-mode"),
     languageCode: document.getElementById("language-code"),
     speakerCount: document.getElementById("speaker-count"),
@@ -282,11 +283,7 @@
       return;
     }
 
-    const backendUrl = (els.backendUrl.value || "").trim().replace(/\/+$/, "");
-    if (!backendUrl) {
-      setStatus("Enter a backend URL first.");
-      return;
-    }
+    const backendUrl = BACKEND_URL;
     if (selectedFiles.length === 0) {
       setStatus("Choose at least one audio file.");
       return;

@@ -21,13 +21,7 @@ description = "Upload audio files, run Sarvam batch transcription in the browser
       <label class="transcribe-field">
         <span>Sarvam API key</span>
         <input id="sarvam-api-key" type="password" placeholder="sk_..." autocomplete="off" spellcheck="false">
-        <small>Sent only to your transcription backend for this request. Leave blank if the backend already has its own key configured.</small>
-      </label>
-
-      <label class="transcribe-field">
-        <span>Backend URL</span>
-        <input id="backend-url" type="url" value="http://127.0.0.1:8000" placeholder="https://your-transcribe-api.example.com" autocomplete="off">
-        <small>Use the local API during development, then point this at your deployed transcription backend.</small>
+        <small>Sent only to the transcription backend for this request. Leave blank only if the backend already has its own key configured.</small>
       </label>
 
       <label class="transcribe-field">
