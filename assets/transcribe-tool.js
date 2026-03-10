@@ -365,8 +365,9 @@
       setStatus(`Completed. ${latestResults.length} transcript${latestResults.length === 1 ? "" : "s"} ready.`);
     } catch (error) {
       stopPolling = true;
-      setStatus(`Transcription failed: ${error.message || error}`);
-      setProgress("model", 100, `Failed${activeJobId ? ` for job ${activeJobId}.` : "."}`);
+      const detail = error && error.message ? error.message : String(error);
+      setStatus(`Transcription failed: ${detail}`);
+      setProgress("model", 100, `Failed: ${detail}`);
     } finally {
       busy = false;
       els.run.disabled = false;
