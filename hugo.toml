@@ -69,6 +69,12 @@ url = '/work/'
 weight = 40
 
 [[menu.main]]
+identifier = 'transcribe'
+name = 'Transcribe'
+url = '/transcribe/'
+weight = 50
+
+[[menu.main]]
 identifier = 'blog'
 name = 'Blog'
 url = '/blog/'
