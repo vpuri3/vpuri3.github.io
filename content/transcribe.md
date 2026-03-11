@@ -21,7 +21,7 @@ description = "Upload audio files, run Sarvam batch transcription in the browser
       <label class="transcribe-field">
         <span>Sarvam API key</span>
         <input id="sarvam-api-key" type="password" placeholder="sk_..." autocomplete="off" spellcheck="false">
-        <small>Sent only to the transcription backend for this request. Leave blank only if the backend already has its own key configured.</small>
+        <small>Required unless the backend owner already configured a server-side Sarvam key.</small>
       </label>
 
       <label class="transcribe-field">
@@ -129,5 +129,5 @@ description = "Upload audio files, run Sarvam batch transcription in the browser
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
-<script src="/assets/transcribe-tool.js?v=20260310-3" defer></script>
+<script src="/assets/transcribe-tool.js?v=20260311-1" defer></script>
 {{< /rawhtml >}}
