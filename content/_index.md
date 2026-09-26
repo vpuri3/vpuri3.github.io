@@ -32,6 +32,20 @@ title = "Home"
 ## Featured Work
 
 {{< projectcard >}}
+### FLARE++ - Low-rank attention with attention-synthesized routing
+- Made FLARE's compression template input-aware: one extra attention call synthesizes the routing queries from the current input.
+- Preserved low-rank structure and linear cost in sequence length using only standard fused SDPA calls, with no custom kernel.
+- Built exact multi-GPU context parallelism that shards tokens across devices, enabling single-pass inference on the 8.2M-cell DrivAerML car surface.
+- Reduced FLARE's error by 25% on average across five PDE benchmarks and raised Long Range Arena average accuracy by 3.5%.
+
+[![GitHub](https://img.shields.io/badge/GitHub-Repo-181717?logo=github)](https://github.com/vpuri3/FLARE.py)
+[![arXiv](https://img.shields.io/badge/arXiv-2608.11519-B31B1B?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2608.11519)
+[![Blog](https://img.shields.io/badge/Blog-Post-2E7D32)](/blog/flare-plus-plus-stop-compressing-every-field-the-same-way/)
+
+![FLARE++ mixer overview](/assets/blog/flarepp-post/flarepp_block.png)
+{{< /projectcard >}}
+
+{{< projectcard >}}
 ### FLARE - Fast Low-rank Attention Routing Engine
 - Derived a flexible low-rank reformulation of self-attention via latent routing.
 - Reduced quadratic complexity of global communication in self-attention to linear complexity.
