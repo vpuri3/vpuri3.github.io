@@ -147,8 +147,10 @@ class FLAREPPMixer(nn.Module):
         # Q = Qf + SDPA(Q~, K~, K~)
         Qs = self.norm_seed(self.Q_seed).expand(B, -1, -1, -1)
         Qd = F.scaled_dot_product_attention(Qs, Ks, Ks)          # [B, H, M, D]
-        g = torch.sigmoid(self.gate).view(1, self.H, 1, 1)
-        Q = self.norm0(self.Q_fix) + g * Qd                        # [B, H, M, D]
+        # gated sum in FP32, then cast back (matters under FP16/BF16 autocast)
+        Qf = self.norm0(self.Q_fix).float()
+        g = torch.sigmoid(self.gate).float().view(1, self.H, 1, 1)
+        Q = (Qf + g * Qd.float()).to(X.dtype)                      # [B, H, M, D]
 
         # Z = SDPA(Q, K, V): gather N tokens into M latents
         Z = F.scaled_dot_product_attention(Q, K, V)                # [B, H, M, D]
