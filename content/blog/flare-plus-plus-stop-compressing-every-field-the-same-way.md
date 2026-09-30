@@ -17,7 +17,7 @@ This post walks through the idea.
 The paper is [FLARE++: Low-rank attention with attention-synthesized routing](https://arxiv.org/abs/2608.11519) (with Sri Datta Ganesh Bandreddi, Jessica Zhang, and Burak Kara), and the code is in [FLARE.py](https://github.com/vpuri3/FLARE.py).
 If you have not read the [FLARE post](/blog/scaling-attention-to-1m-tokens-on-a-single-gpu/), start there; this one builds directly on it.
 
-![The FLARE++ mixer](/assets/blog/flarepp-post/flarepp_block.png)
+![The FLARE++ mixer: block schematic, per-operation cost, and the rank-M operator the two routing calls compose to](/assets/blog/flarepp-post/flarepp_fig1.png)
 
 ---
 
@@ -96,41 +96,98 @@ The backbone keeps the same depth, width, and residual structure; every added co
 
 ### In code
 
-Here is the mixer for one block, written directly from the equations above (the full implementation is [`pdebench/models/flarepp.py`](https://github.com/vpuri3/FLARE.py/blob/master/pdebench/models/flarepp.py)):
+Here is a complete, runnable PyTorch implementation of the mixer and the residual block around it.
+Each step is labeled with the matching row of the cost table in the figure above.
+It needs PyTorch 2.4 or later for `nn.RMSNorm`.
 
 ```python {linenos=false}
 import torch
-from torch.nn.functional import scaled_dot_product_attention as SDPA
-from torch.nn.functional import rms_norm
+import torch.nn as nn
+import torch.nn.functional as F
 
-def flarepp_mixer(X, Wk, Wv, Wk_syn, Q_seed, Q_ref, gamma, norm_q, norm_k):
-    """
-    X:       [B, N, C]      input tokens, C = H * D
-    Q_seed:  [H, M, D]      learned synthesis seeds  (Q-tilde)
-    Q_ref:   [H, M, D]      learned fixed reference  (Q^f)
-    gamma:   [H]            gate logits
-    norm_q, norm_k: RMSNorm modules with learned scale (N_a)
-    """
-    H, M, D = Q_seed.shape
-    split = lambda T: T.unflatten(-1, (H, D)).transpose(1, 2)   # [B, H, N, D]
-    n0 = lambda T: rms_norm(T, (D,))                             # N_0: no scale
 
-    # 1) synthesize M query corrections from the current input
-    Ks = n0(split(X @ Wk_syn))                                   # shared K = V
-    Qd = SDPA(norm_q(Q_seed).unsqueeze(0), Ks, Ks)               # [B, H, M, D]
+class FLAREPPMixer(nn.Module):
+    """FLARE++ token mixer. X: [B, N, C] -> O: [B, N, C], with C = H * D."""
 
-    # 2) gate onto the fixed reference
-    g = torch.sigmoid(gamma).view(1, H, 1, 1)
-    Q = n0(Q_ref).unsqueeze(0) + g * Qd                          # [B, H, M, D]
+    def __init__(self, C: int, H: int = 8, M: int = 64, gate_init: float = 0.25):
+        super().__init__()
+        assert C % H == 0
+        self.H, self.D = H, C // H
+        D = self.D
 
-    # 3) gather along the synthesized routes, then scatter back
-    K, V = norm_k(split(X @ Wk)), split(X @ Wv)
-    Z = SDPA(Q, K, V)                                            # [B, H, M, D]
-    Y = SDPA(K, Q, Z)                                            # [B, H, N, D]
-    return Y
+        # projections for K, V, K~, and the output
+        self.Wk = nn.Linear(C, C)
+        self.Wv = nn.Linear(C, C)
+        self.Wk_syn = nn.Linear(C, C)
+        self.Wo = nn.Linear(C, C)
+
+        # learned latents: M per head
+        self.Q_seed = nn.Parameter(0.02 * torch.randn(H, M, D))  # Q~, synthesis seeds
+        self.Q_fix = nn.Parameter(0.02 * torch.randn(H, M, D))   # Qf, fixed reference
+        self.gate = nn.Parameter(torch.full((H,), gate_init))     # g_h = sigmoid(gate_h)
+
+        # per-head RMSNorm: N_a has a learned scale, N_0 does not
+        self.norm_seed = nn.RMSNorm(D, eps=1e-6)
+        self.norm_k = nn.RMSNorm(D, eps=1e-6)
+        self.norm0 = nn.RMSNorm(D, eps=1e-6, elementwise_affine=False)
+
+    def heads(self, T):
+        # [B, N, C] -> [B, H, N, D]
+        B, N, _ = T.shape
+        return T.view(B, N, self.H, self.D).transpose(1, 2)
+
+    def forward(self, X):
+        B, N, C = X.shape
+
+        # K, V, K~ = project(X)
+        K = self.norm_k(self.heads(self.Wk(X)))
+        V = self.heads(self.Wv(X))
+        Ks = self.norm0(self.heads(self.Wk_syn(X)))  # used as both keys and values
+
+        # Q = Qf + SDPA(Q~, K~, K~)
+        Qs = self.norm_seed(self.Q_seed).expand(B, -1, -1, -1)
+        Qd = F.scaled_dot_product_attention(Qs, Ks, Ks)          # [B, H, M, D]
+        g = torch.sigmoid(self.gate).view(1, self.H, 1, 1)
+        Q = self.norm0(self.Q_fix) + g * Qd                        # [B, H, M, D]
+
+        # Z = SDPA(Q, K, V): gather N tokens into M latents
+        Z = F.scaled_dot_product_attention(Q, K, V)                # [B, H, M, D]
+
+        # Y = SDPA(K, Q, Z): scatter M latents back to N tokens
+        Y = F.scaled_dot_product_attention(K, Q, Z)                # [B, H, N, D]
+
+        # O = merge(Y) @ Wo
+        return self.Wo(Y.transpose(1, 2).reshape(B, N, C))
+
+
+class FLAREPPBlock(nn.Module):
+    """Pre-norm residual block: X + FLARE++(Norm(X)), then X + FFN(Norm(X))."""
+
+    def __init__(self, C: int, H: int = 8, M: int = 64, mlp_ratio: float = 2.0):
+        super().__init__()
+        self.norm1 = nn.RMSNorm(C, eps=1e-6)
+        self.norm2 = nn.RMSNorm(C, eps=1e-6)
+        self.mixer = FLAREPPMixer(C, H, M)
+        self.ffn = nn.Sequential(
+            nn.Linear(C, int(mlp_ratio * C)),
+            nn.GELU(),
+            nn.Linear(int(mlp_ratio * C), C),
+        )
+
+    def forward(self, X):
+        X = X + self.mixer(self.norm1(X))
+        X = X + self.ffn(self.norm2(X))
+        return X
+
+
+if __name__ == "__main__":
+    block = FLAREPPBlock(C=128, H=8, M=64)
+    X = torch.randn(2, 10_000, 128)  # 2 inputs, 10K points, 128 channels
+    print(block(X).shape)            # torch.Size([2, 10000, 128])
 ```
 
 Three fused SDPA calls, no custom kernel, no $N \times M$ matrix in memory.
+The reference implementation, [`pdebench/models/flarepp.py`](https://github.com/vpuri3/FLARE.py/blob/master/pdebench/models/flarepp.py), has the same structure; it adds weight initialization and the context-parallel encoder described below, and uses LayerNorm in place of RMSNorm for full-precision runs.
 
 ### Why the normalization and the gate
 
